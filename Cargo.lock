@@ -2761,7 +2761,7 @@ checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
 name = "pdf-r2l-android"
-version = "1.0.2"
+version = "1.0.3"
 dependencies = [
  "jni 0.21.1",
  "pdf-r2l-core",
@@ -2771,14 +2771,14 @@ dependencies = [
 
 [[package]]
 name = "pdf-r2l-cli"
-version = "1.0.2"
+version = "1.0.3"
 dependencies = [
  "pdf-r2l-core",
 ]
 
 [[package]]
 name = "pdf-r2l-core"
-version = "1.0.2"
+version = "1.0.3"
 dependencies = [
  "lopdf",
  "open-runo-pdf-ocr",
@@ -2786,7 +2786,7 @@ dependencies = [
 
 [[package]]
 name = "pdf-r2l-desktop"
-version = "1.0.2"
+version = "1.0.3"
 dependencies = [
  "eframe",
  "pdf-r2l-core",

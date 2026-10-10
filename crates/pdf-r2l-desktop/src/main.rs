@@ -113,8 +113,10 @@ const RED: egui::Color32 = egui::Color32::from_rgb(200, 40, 40);
 impl App {
     fn new(prefs: Prefs) -> Self {
         let ui_debug = std::env::var("PDFR2L_UI_DEBUG").unwrap_or_default();
+        // 起動引数の PDF(「このアプリで開く」・ドロップ・コマンドライン)を最初から選んでおく。
+        let initial = std::env::args_os().skip(1).map(PathBuf::from).find(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("pdf")) && p.is_file());
         App {
-            src: None,
+            src: initial,
             saved: prefs.clone(),
             prefs,
             language_window: ui_debug == "lang",
@@ -363,6 +365,58 @@ impl eframe::App for App {
                 ui.add(egui::Label::new(egui::RichText::new(LICENSES.trim_start_matches('\u{feff}')).monospace().size(11.0)).wrap_mode(egui::TextWrapMode::Extend));
             });
         });
+        // 変換ボタン・進捗・結果は、設定が長くスクロールしても常に見えるよう、画面下に固定する。
+        egui::TopBottomPanel::bottom("actions").show(ctx, |ui| {
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                let label = if self.prefs.overwrite { "変換して上書き / Convert and overwrite" } else { "変換して保存… / Convert and save…" };
+                if ui.add_enabled(self.src.is_some() && !busy, egui::Button::new(label)).clicked() {
+                    self.start(ctx, None);
+                }
+                if busy && ui.button("キャンセル / Cancel").clicked() {
+                    self.cancel.store(true, Ordering::Relaxed);
+                }
+                if ui.button("ライセンス / License").clicked() {
+                    self.license_window = true;
+                }
+            });
+            let mut offline_fallback = false;
+            if let Ok(s) = self.shared.lock() {
+                if s.running {
+                    match &s.progress {
+                        Some(p) => {
+                            let frac = if p.total == 0 { 0.0 } else { p.done as f32 / p.total as f32 };
+                            ui.add(egui::ProgressBar::new(frac).text(stage_text(p)));
+                        }
+                        None => {
+                            ui.add(egui::ProgressBar::new(0.0).text("開始中… / Starting…"));
+                        }
+                    }
+                }
+                egui::ScrollArea::vertical().max_height(150.0).id_salt("result").show(ui, |ui| match &s.result {
+                    Some(Ok((m, dest))) => {
+                        ui.colored_label(GREEN, m);
+                        #[cfg(target_os = "windows")]
+                        if ui.button("保存先を開く / Show in folder").clicked() {
+                            let _ = std::process::Command::new("explorer").arg(format!("/select,{}", dest.display())).spawn();
+                        }
+                        #[cfg(not(target_os = "windows"))]
+                        let _ = dest;
+                    }
+                    Some(Err(e)) => {
+                        ui.colored_label(RED, format!("エラー / Error: {e}"));
+                        if e.contains("online environment") && !busy {
+                            offline_fallback = true;
+                        }
+                    }
+                    None => {}
+                });
+            }
+            if offline_fallback && self.src.is_some() && ui.button("OCRを使わずに、綴じ方向だけ変換 / Convert without OCR (direction only)").clicked() {
+                self.start(ctx, Some(false));
+            }
+            ui.add_space(4.0);
+        });
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.heading("PDF 綴じ方向変更 / PDF binding direction");
@@ -391,56 +445,6 @@ impl eframe::App for App {
                 });
                 ui.separator();
                 self.ocr_section(ui, ctx, busy);
-                ui.separator();
-                ui.horizontal(|ui| {
-                    let label = if self.prefs.overwrite { "変換して上書き / Convert and overwrite" } else { "変換して保存… / Convert and save…" };
-                    if ui.add_enabled(self.src.is_some() && !busy, egui::Button::new(label)).clicked() {
-                        self.start(ctx, None);
-                    }
-                    if busy && ui.button("キャンセル / Cancel").clicked() {
-                        self.cancel.store(true, Ordering::Relaxed);
-                    }
-                });
-                let mut offline_fallback = false;
-                if let Ok(s) = self.shared.lock() {
-                    if s.running {
-                        match &s.progress {
-                            Some(p) => {
-                                let frac = if p.total == 0 { 0.0 } else { p.done as f32 / p.total as f32 };
-                                ui.add(egui::ProgressBar::new(frac).text(stage_text(p)));
-                            }
-                            None => {
-                                ui.add(egui::ProgressBar::new(0.0).text("開始中… / Starting…"));
-                            }
-                        }
-                        ui.spinner();
-                    }
-                    match &s.result {
-                        Some(Ok((m, dest))) => {
-                            ui.colored_label(GREEN, m);
-                            #[cfg(target_os = "windows")]
-                            if ui.button("保存先を開く / Show in folder").clicked() {
-                                let _ = std::process::Command::new("explorer").arg(format!("/select,{}", dest.display())).spawn();
-                            }
-                            #[cfg(not(target_os = "windows"))]
-                            let _ = dest;
-                        }
-                        Some(Err(e)) => {
-                            ui.colored_label(RED, format!("エラー / Error: {e}"));
-                            if e.contains("online environment") && !busy {
-                                offline_fallback = true;
-                            }
-                        }
-                        None => {}
-                    }
-                }
-                if offline_fallback && self.src.is_some() && ui.button("OCRを使わずに、綴じ方向だけ変換 / Convert without OCR (direction only)").clicked() {
-                    self.start(ctx, Some(false));
-                }
-                ui.add_space(6.0);
-                if ui.button("ライセンス / License").clicked() {
-                    self.license_window = true;
-                }
             });
         });
         // 画面で選んだ内容が変わったら保存する(次回起動時に復元)。

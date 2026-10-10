@@ -49,11 +49,13 @@ class MainActivity : Activity() {
         val pad = dp(16)
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(pad, pad * 2, pad, pad)
+            setPadding(pad, pad, pad, pad)
         }
         fun add(v: View) = root.addView(v, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        val primary = android.util.TypedValue().also { theme.resolveAttribute(android.R.attr.textColorPrimary, it, true) }.let { getColor(it.resourceId) }
         fun label(s: String, size: Float = 14f, bold: Boolean = false) = TextView(this).apply {
             text = s
+            setTextColor(primary)
             textSize = size
             if (bold) setTypeface(typeface, Typeface.BOLD)
         }
@@ -148,34 +150,68 @@ class MainActivity : Activity() {
         ) { ocr.put("replace_text", it == "replace"); savePrefs() })
         add(ocrPanel)
 
+        // 変換ボタン・進捗・結果は、設定が長くても常に見えるよう、画面下に固定する。
+        val bottom = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(pad, dp(4), pad, dp(4)) }
+        fun addBottom(v: View) = bottom.addView(v, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        // ボタンは1行(変換・キャンセル・ライセンス)。メッセージは、空のときは場所を取らない。
+        fun autoHide(tv: TextView) = tv.apply {
+            visibility = View.GONE
+            addTextChangedListener(object : android.text.TextWatcher {
+                override fun afterTextChanged(s: android.text.Editable?) { visibility = if (s.isNullOrEmpty()) View.GONE else View.VISIBLE }
+                override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+                override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            })
+        }
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        fun rowButton(b: Button, weight: Float) = row.addView(b, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, weight))
         convertButton = Button(this).apply {
             text = "変換して保存… / Convert and save…"
             setOnClickListener { askDestination() }
         }
-        add(convertButton)
+        rowButton(convertButton, 2f)
         cancelButton = Button(this).apply { text = "キャンセル / Cancel"; visibility = View.GONE; setOnClickListener { Native.cancel() } }
-        add(cancelButton)
-        progressText = label("")
-        add(progressText)
-        resultText = label("")
-        add(resultText)
+        rowButton(cancelButton, 1f)
+        rowButton(Button(this).apply { text = "ライセンス / License"; setOnClickListener { showLicense() } }, 1f)
+        addBottom(row)
+        progressText = autoHide(label(""))
+        addBottom(progressText)
+        resultText = autoHide(label(""))
+        addBottom(resultText)
         fallbackButton = Button(this).apply {
             text = "OCRを使わずに、綴じ方向だけ変換 / Convert without OCR (direction only)"
             visibility = View.GONE
             setOnClickListener { ocrOverride = false; askDestination() }
         }
-        add(fallbackButton)
-        add(Button(this).apply { text = "ライセンス / License"; setOnClickListener { showLicense() } })
+        addBottom(fallbackButton)
 
-        setContentView(ScrollView(this).apply {
-            addView(root)
-            // Android 15 の画面端までの描画で、バーに隠れないよう余白を足す。
-            setOnApplyWindowInsetsListener { _, ins ->
-                @Suppress("DEPRECATION")
-                root.setPadding(pad, ins.systemWindowInsetTop + pad, pad, ins.systemWindowInsetBottom + pad)
-                ins
-            }
-        })
+        val maxW = dp(640)
+        val column = android.widget.FrameLayout(this).apply {
+            addView(root, android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, android.view.Gravity.CENTER_HORIZONTAL))
+        }
+        val scroll = ScrollView(this).apply { addView(column) }
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(scroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+            addView(bottom, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        }
+        // 広い画面(タブレット・横向き)では、内容の幅を最大 640dp にして中央に寄せる。
+        fun limitWidth() {
+            val w = minOf(resources.displayMetrics.widthPixels, maxW)
+            (root.layoutParams as android.widget.FrameLayout.LayoutParams).width = w
+            root.requestLayout()
+            val bw = (bottom.layoutParams as LinearLayout.LayoutParams)
+            val side = maxOf(0, (resources.displayMetrics.widthPixels - w) / 2)
+            bw.leftMargin = side; bw.rightMargin = side
+            bottom.requestLayout()
+        }
+        container.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> limitWidth() }
+        // Android 15 の画面端までの描画で、バー・ノッチに隠れないよう余白を足す(縦横どちらでも)。
+        container.setOnApplyWindowInsetsListener { _, ins ->
+            ("DEPRECATION")
+            container.setPadding(ins.systemWindowInsetLeft, ins.systemWindowInsetTop, ins.systemWindowInsetRight, ins.systemWindowInsetBottom)
+            ins
+        }
+        setContentView(container)
         // 他のアプリから「共有/開く」で渡された PDF
         intent?.data?.let { setSource(it) }
         debugRun()
