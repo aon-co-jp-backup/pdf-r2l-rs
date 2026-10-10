@@ -1,0 +1,33 @@
+[package]
+name = "pdf-r2l-desktop"
+description = "PDF R2L RS - desktop GUI (Windows / macOS / Linux)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "pdf-r2l-rs"
+path = "src/main.rs"
+
+[dependencies]
+pdf-r2l-core = { path = "../pdf-r2l-core" }
+eframe = "0.29"
+rfd = "0.15"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[package.metadata.deb]
+name = "pdf-r2l-rs"
+maintainer = "aon-co-jp <noreply@github.com>"
+copyright = "See /usr/share/doc/pdf-r2l-rs/copyright (English and Japanese)"
+extended-description = "Change the binding direction of PDFs (R2L/L2R), two-page spread, and optional OCR re-typesetting. PDFの綴じ方向を変更するGUIアプリ。"
+section = "utils"
+priority = "optional"
+depends = "$auto, fonts-noto-cjk | fonts-ipafont-gothic, xdg-desktop-portal"
+assets = [
+  ["../../target/release/pdf-r2l-rs", "usr/bin/", "755"],
+  ["../../LICENSES.txt", "usr/share/doc/pdf-r2l-rs/copyright", "644"],
+  ["../../packaging/pdf-r2l-rs.desktop", "usr/share/applications/", "644"],
+]

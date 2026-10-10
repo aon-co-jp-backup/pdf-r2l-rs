@@ -1,0 +1,15 @@
+[package]
+name = "pdf-r2l-cli"
+description = "PDF R2L RS - command line (batch use and automated tests)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "pdf-r2l-cli"
+path = "src/main.rs"
+
+[dependencies]
+pdf-r2l-core = { path = "../pdf-r2l-core" }

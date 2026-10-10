@@ -1,0 +1,12 @@
+[package]
+name = "pdf-r2l-core"
+description = "PDF binding direction (right-to-left / left-to-right), two-page spread layout and optional OCR re-typesetting. Written from the PDF specification (ISO 32000-1)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+lopdf = { workspace = true }
+open-runo-pdf-ocr = { workspace = true }

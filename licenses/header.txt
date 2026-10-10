@@ -1,0 +1,89 @@
+PDF R2L RS - License notices / ライセンス表示
+==============================================================================
+
+[English]
+
+PDF R2L RS is a GUI application (Windows / macOS / Linux / Android, with installers)
+that changes the binding direction of PDF files (right-to-left "R2L" / left-to-right
+"L2R"), can show them as a two-page spread, and can read scanned pages with OCR and
+replace the text with searchable text in a matching typeface.
+
+This program is an original implementation. Changing the binding direction is written
+from the PDF specification (ISO 32000-1: 12.2 Viewer Preferences, 7.7.2 Document
+Catalog) and does not contain source code from other "pdf-r2l" projects.
+
+Copyright (c) 2026 aon-co-jp
+
+You may use this program under either of the following licenses, at your option:
+  - MIT License
+  - Apache License, Version 2.0
+Both license texts are included below. The source code is available at
+https://github.com/aon-co-jp/pdf-r2l-rs .
+
+Third-party libraries and data used by this program are listed after the license
+texts, together with their licenses. When OCR is used, the page images are sent to the
+OCR server (aruaru-llm) you configure, and are discarded right after processing.
+
+Only the English text of each license is legally binding. The Japanese text is a
+courtesy explanation, not an official translation. This notice is not legal advice.
+
+[日本語]
+
+PDF R2L RS は、PDFファイルの綴じ方向(右綴じ「R2L」/左綴じ「L2R」)を変更し、見開き表示にし、
+スキャンしたページを OCR で読み取って元の書体に合わせた検索できる文字に置き換えられる、
+GUI アプリケーション(Windows / macOS / Linux / Android、インストーラー付き)です。
+
+本プログラムは独自に実装したものです。綴じ方向の変更は、PDF の仕様書(ISO 32000-1:
+12.2 Viewer Preferences、7.7.2 Document Catalog)だけを根拠に書いており、他の「pdf-r2l」
+プロジェクトのソースコードを含みません。
+
+Copyright (c) 2026 aon-co-jp
+
+本プログラムは、次のいずれかのライセンスを選んで利用できます:
+  - MIT ライセンス
+  - Apache License 2.0
+両方のライセンス本文を以下に掲載します。ソースコードは
+https://github.com/aon-co-jp/pdf-r2l-rs で入手できます。
+
+本プログラムが使用している第三者のライブラリとデータは、ライセンス本文の後に、そのライセンスと
+ともに列挙しています。OCR を使うときは、ページ画像が、設定した OCR サーバー(aruaru-llm)へ送られ、
+処理後すぐに破棄されます。
+
+各ライセンスで法的拘束力を持つのは英語の原文のみです。日本語部分は便宜的な説明であり、公式な翻訳では
+ありません。この表示は法的助言ではありません。
+
+==============================================================================
+The MIT License (MIT)
+==============================================================================
+
+Copyright (c) 2026 aon-co-jp
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+(日本語の参考訳・非公式) 本ソフトウェアおよび関連文書(以下「ソフトウェア」)の複製を取得した人は、
+無償で、使用・複製・改変・結合・公開・頒布・サブライセンス・販売の権利を含め、制限なくソフトウェアを
+扱うことができます。ただし、上記の著作権表示と本許諾表示を、ソフトウェアの全ての複製または重要な
+部分に含めることを条件とします。ソフトウェアは「現状のまま」で、明示・黙示を問わず一切の保証なしに
+提供されます。作者または著作権者は、契約・不法行為その他を問わず、ソフトウェアまたはその使用・取引に
+起因する一切の請求・損害・その他の責任を負いません。
+
+==============================================================================
+Apache License, Version 2.0 (full text / 原文全文)
+==============================================================================
+

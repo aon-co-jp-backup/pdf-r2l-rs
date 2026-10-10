@@ -1,0 +1,43 @@
+
+
+==============================================================================
+Third-party software and data / 第三者のソフトウェアとデータ
+==============================================================================
+
+[English]
+This program is built with the Rust crates listed below. Each crate is licensed under
+the license shown next to it (for "A OR B", you may choose either). The MIT License
+text is above and the Apache License 2.0 text is above; other licenses (e.g. Zlib,
+Unicode-3.0, BSD) are in each crate's source package on https://crates.io .
+Key libraries: lopdf (MIT), hayro (MIT OR Apache-2.0, PDF page rendering), egui / eframe
+(MIT OR Apache-2.0), rfd (MIT), ureq (MIT OR Apache-2.0), subsetter and ttf-parser
+(MIT OR Apache-2.0), RPoem open-runo-pdf-ocr (MIT OR Apache-2.0).
+
+Fonts: when text is re-typeset, subsets of the Noto fonts (Noto Sans / Noto Serif, including
+the CJK variants) are embedded in the output PDF. They are licensed under the SIL Open Font
+License 1.1 (https://openfontlicense.org), which permits embedding in documents. egui's bundled
+default fonts (epaint_default_fonts) are under OFL-1.1 and the Ubuntu Font Licence 1.0.
+
+OCR: text recognition is performed by Tesseract (Apache-2.0) running in aruaru-llm. The OCR
+language data comes from tessdata_best / tessdata_fast (Apache-2.0).
+
+[日本語]
+本プログラムは、下記の Rust クレートを使用してビルドされています。各クレートは、併記のライセンスで
+提供されています(「A OR B」は、どちらかを選択可能という意味です)。MIT ライセンスと Apache License 2.0
+の全文は上に掲載しています。その他のライセンス(Zlib・Unicode-3.0・BSD など)の全文は、
+https://crates.io 上の各クレートのソースパッケージに含まれています。
+主なライブラリ: lopdf (MIT)、hayro (MIT OR Apache-2.0、PDF ページの描画)、egui / eframe
+(MIT OR Apache-2.0)、rfd (MIT)、ureq (MIT OR Apache-2.0)、subsetter・ttf-parser
+(MIT OR Apache-2.0)、RPoem の open-runo-pdf-ocr (MIT OR Apache-2.0)。
+
+フォント: テキストを置き換えるとき、Noto フォント(Noto Sans / Noto Serif、CJK 版を含む)のサブセットが
+出力の PDF に埋め込まれます。SIL Open Font License 1.1(https://openfontlicense.org)で、文書への
+埋め込みが認められています。egui に同梱の既定フォント(epaint_default_fonts)は OFL-1.1 と
+Ubuntu Font Licence 1.0 に従います。
+
+OCR: 文字認識は、aruaru-llm で動く Tesseract(Apache-2.0)が行います。OCR の言語データは
+tessdata_best / tessdata_fast(Apache-2.0)です。
+
+------------------------------------------------------------------------------
+Crate list / クレート一覧
+------------------------------------------------------------------------------

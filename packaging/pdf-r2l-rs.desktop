@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=PDF R2L RS
+Name[ja]=PDF R2L RS (PDF綴じ方向変更)
+Comment=Change the binding direction of PDFs, with optional OCR re-typesetting
+Comment[ja]=PDFの綴じ方向を変更します(OCRで検索できる文字化も可)
+Exec=pdf-r2l-rs
+Terminal=false
+Categories=Utility;
+MimeType=application/pdf;
