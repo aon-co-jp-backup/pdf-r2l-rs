@@ -152,6 +152,12 @@ class MainActivity : Activity() {
             listOf("replace" to "元の書体に合わせた文字に置き換える / Replace with text in the matching typeface", "search" to "元の画像はそのまま、検索用の見えない文字だけ追加 / Keep the original image; add invisible searchable text only"),
             if (ocr.optBoolean("replace_text", true)) "replace" else "search",
         ) { ocr.put("replace_text", it == "replace"); savePrefs() })
+        ocrPanel.addView(CheckBox(this).apply {
+            text = "かすれ補正(自信の低い行を、ノイズ除去+AI超解像で拡大して読み直す) / Faded-text rescue (denoise + AI super-resolution, then read again)"
+            isChecked = ocr.optBoolean("reocr", false)
+            setOnCheckedChangeListener { _, v -> ocr.put("reocr", v); savePrefs() }
+        })
+        ocrPanel.addView(label("スマホのCPUでは時間がかかります。コントラストの自動補正は常に行います。\nIt takes time on a phone CPU. Automatic contrast correction is always on.", 11f))
         ocrPanel.addView(label("AI文脈補完 / AI context completion:", 13f, true))
         ocrPanel.addView(CheckBox(this).apply {
             text = "かすれて読めない1〜2文字を、前後の文脈から推測して穴埋め / Guess one or two faded characters from the surrounding text"
@@ -159,6 +165,16 @@ class MainActivity : Activity() {
             setOnCheckedChangeListener { _, v -> ocr.put("fill", v); savePrefs() }
         })
         ocrPanel.addView(label("低信頼の短い単語・欠けた文字・余計な1文字だけが対象で、長文は書き換えません。推測なので誤ることがあります。サーバーに言語モデル(例: Qwen2.5)が必要です。\nOnly low-confidence short words, missing characters and stray characters are considered; long text is never rewritten. It is a guess and can be wrong. The server needs a language model (e.g. Qwen2.5).", 11f))
+        ocrPanel.addView(CheckBox(this).apply {
+            text = "字形(残っているインクの形)も照合 / Also match the shape of the remaining ink"
+            isChecked = ocr.optBoolean("fill_visual", true)
+            setOnCheckedChangeListener { _, v -> ocr.put("fill_visual", v); savePrefs() }
+        })
+        ocrPanel.addView(CheckBox(this).apply {
+            text = "検索(aruaru-search)で実在の文章と照合 / Check candidates against real text via search"
+            isChecked = ocr.optBoolean("fill_web", true)
+            setOnCheckedChangeListener { _, v -> ocr.put("fill_web", v); savePrefs() }
+        })
         ocrPanel.addView(label("補完サーバーURL(空ならOCRと同じ) / Completion server URL (blank = same as OCR)", 12f))
         ocrPanel.addView(EditText(this).apply {
             setText(ocr.optString("fill_server_url", ""))

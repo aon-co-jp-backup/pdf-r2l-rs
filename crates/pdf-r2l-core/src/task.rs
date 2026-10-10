@@ -58,7 +58,14 @@ fn describe(report: &Report) -> String {
          OCR: read {} lines on {} pages; replaced {} lines with text; kept the original image for {} lines and added invisible searchable text.",
         report.pages, report.lines_found, report.lines_retyped, report.lines_text_only,
         report.lines_found, report.pages, report.lines_retyped, report.lines_text_only,
-    ) + &if report.chars_filled > 0 {
+    ) + &if report.lines_reread > 0 {
+        format!(
+            "\nかすれ補正: {}行を、拡大して読み直しました。\nFaded-text rescue: re-read {} line(s) after enlarging them.",
+            report.lines_reread, report.lines_reread
+        )
+    } else {
+        String::new()
+    } + &if report.chars_filled > 0 {
         format!(
             "\nAI文脈補完: {}か所を前後の文脈から直しました(推測のため確認してください)。\nAI context completion: fixed {} spot(s) from the surrounding text (it is a guess; please check).",
             report.chars_filled, report.chars_filled
