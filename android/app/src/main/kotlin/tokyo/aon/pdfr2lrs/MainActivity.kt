@@ -160,7 +160,7 @@ class MainActivity : Activity() {
         ocrPanel.addView(label("スマホのCPUでは時間がかかります。コントラストの自動補正は常に行います。\nIt takes time on a phone CPU. Automatic contrast correction is always on.", 11f))
         ocrPanel.addView(label("AI文脈補完 / AI context completion:", 13f, true))
         ocrPanel.addView(CheckBox(this).apply {
-            text = "かすれて読めない1〜2文字を、前後の文脈から推測して穴埋め / Guess one or two faded characters from the surrounding text"
+            text = "実験的: 読み違い・かすれた連続1〜4文字を、前後の文脈から推測して直す / Experimental: fix 1-4 misread or faded characters from the surrounding text"
             isChecked = ocr.optBoolean("fill", false)
             setOnCheckedChangeListener { _, v -> ocr.put("fill", v); savePrefs() }
         })

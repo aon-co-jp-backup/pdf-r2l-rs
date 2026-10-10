@@ -2718,7 +2718,7 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 [[package]]
 name = "open-runo-glyph"
 version = "0.1.0"
-source = "git+https://github.com/aon-co-jp/RPoem?rev=ff2bd96dd9e2f7c9f41cdead05067c93df1397ed#ff2bd96dd9e2f7c9f41cdead05067c93df1397ed"
+source = "git+https://github.com/aon-co-jp/RPoem?rev=e37de938e8c0fb756726ceac7a97e6bd8e813270#e37de938e8c0fb756726ceac7a97e6bd8e813270"
 dependencies = [
  "fontdue",
 ]
@@ -2726,7 +2726,7 @@ dependencies = [
 [[package]]
 name = "open-runo-pdf-ocr"
 version = "0.1.0"
-source = "git+https://github.com/aon-co-jp/RPoem?rev=ff2bd96dd9e2f7c9f41cdead05067c93df1397ed#ff2bd96dd9e2f7c9f41cdead05067c93df1397ed"
+source = "git+https://github.com/aon-co-jp/RPoem?rev=e37de938e8c0fb756726ceac7a97e6bd8e813270#e37de938e8c0fb756726ceac7a97e6bd8e813270"
 dependencies = [
  "base64 0.22.1",
  "hayro",
@@ -2744,7 +2744,7 @@ dependencies = [
 [[package]]
 name = "open-runo-sr"
 version = "0.1.0"
-source = "git+https://github.com/aon-co-jp/RPoem?rev=ff2bd96dd9e2f7c9f41cdead05067c93df1397ed#ff2bd96dd9e2f7c9f41cdead05067c93df1397ed"
+source = "git+https://github.com/aon-co-jp/RPoem?rev=e37de938e8c0fb756726ceac7a97e6bd8e813270#e37de938e8c0fb756726ceac7a97e6bd8e813270"
 dependencies = [
  "image",
 ]
@@ -2815,7 +2815,7 @@ checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
 name = "pdf-r2l-android"
-version = "1.2.0"
+version = "1.3.0"
 dependencies = [
  "image",
  "jni 0.21.1",
@@ -2826,14 +2826,14 @@ dependencies = [
 
 [[package]]
 name = "pdf-r2l-cli"
-version = "1.2.0"
+version = "1.3.0"
 dependencies = [
  "pdf-r2l-core",
 ]
 
 [[package]]
 name = "pdf-r2l-core"
-version = "1.2.0"
+version = "1.3.0"
 dependencies = [
  "image",
  "lopdf",
@@ -2843,7 +2843,7 @@ dependencies = [
 
 [[package]]
 name = "pdf-r2l-desktop"
-version = "1.2.0"
+version = "1.3.0"
 dependencies = [
  "eframe",
  "pdf-r2l-core",
