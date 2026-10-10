@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/pdf-r2l-core", "crates/pdf-r2l-desktop", "crates/pdf-r2l-cli"]
+members = ["crates/pdf-r2l-core", "crates/pdf-r2l-desktop", "crates/pdf-r2l-cli", "crates/pdf-r2l-android"]
 resolver = "2"
 
 [workspace.package]

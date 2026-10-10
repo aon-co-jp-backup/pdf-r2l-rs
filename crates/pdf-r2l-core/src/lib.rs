@@ -9,4 +9,4 @@ pub mod task;
 
 pub use direction::{apply, read_binding, Binding, DirectionOptions};
 pub use open_runo_pdf_ocr as ocr;
-pub use task::{run, suggest_output_name, Outcome, Output, Task};
+pub use task::{run, suggest_output_name, summarize, transform, Outcome, Output, Task};

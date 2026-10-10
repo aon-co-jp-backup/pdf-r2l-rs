@@ -94,6 +94,50 @@ fn backup_path(source: &Path) -> PathBuf {
         .unwrap_or(first)
 }
 
+/// ファイルを介さず、PDF のバイト列を変換する(Android など)。OCR(有効なら) → 綴じ方向・見開き の順。
+/// 何も変更しない指定(元と同じ + OCR なし)はエラーにする。
+pub fn transform(
+    input: &[u8],
+    direction: DirectionOptions,
+    ocr: Option<&Settings>,
+    cache_dir: &Path,
+    progress: &mut dyn FnMut(Progress),
+    cancelled: &dyn Fn() -> bool,
+) -> Result<(Vec<u8>, Option<Report>), String> {
+    let ocr = ocr.filter(|s| s.enabled);
+    if direction.binding == Binding::Keep && ocr.is_none() {
+        return Err("変更する内容がありません。綴じ方向を選ぶか、OCR をオンにしてください。
+Nothing to change. Choose a binding direction, or turn OCR on.".to_string());
+    }
+    let (mut bytes, mut report) = (input.to_vec(), None);
+    if let Some(settings) = ocr {
+        let (out, r) = process(&bytes, settings, cache_dir, progress, cancelled)?;
+        bytes = out;
+        report = Some(r);
+    }
+    if direction.binding != Binding::Keep {
+        bytes = apply(&bytes, direction)?;
+    }
+    Ok((bytes, report))
+}
+
+/// 結果の日英メッセージ(OCR の概要つき)。
+pub fn summarize(destination: &str, report: Option<&Report>) -> String {
+    let mut message = format!("完了 / Done: {destination}");
+    if let Some(r) = report {
+        message.push('\n');
+        message.push_str(&describe(r));
+        if r.lines_text_only * 3 > r.lines_found && r.lines_found > 0 {
+            message.push_str(
+                "
+(置き換えなかった行が多いです。言語の選択が文書と合っているか確認してください。)
+(Many lines were not replaced. Check that the selected languages match the document.)",
+            );
+        }
+    }
+    message
+}
+
 /// 変換を実行する。`progress` で進捗、`cancelled` でキャンセルを受け付ける。
 pub fn run(task: &Task, cache_dir: &Path, progress: &mut dyn FnMut(Progress), cancelled: &dyn Fn() -> bool) -> Result<Outcome, String> {
     let destination = match &task.output {
@@ -112,14 +156,7 @@ Nothing to change. Choose a binding direction, or turn OCR on.".to_string());
     }
     let original = std::fs::read(&task.source).map_err(|e| format!("読み込みに失敗しました / Read failed: {e}"))?;
 
-    let mut report = None;
-    let mut bytes = original.clone();
-    if let Some(settings) = task.ocr.as_ref().filter(|s| s.enabled) {
-        let (out, r) = process(&bytes, settings, cache_dir, progress, cancelled)?;
-        bytes = out;
-        report = Some(r);
-    }
-    let bytes = if task.direction.binding == Binding::Keep { bytes } else { apply(&bytes, task.direction)? };
+    let (bytes, report) = transform(&original, task.direction, task.ocr.as_ref(), cache_dir, progress, cancelled)?;
 
     if let Output::InPlace { backup: true } = &task.output {
         let bak = backup_path(&task.source);
@@ -127,16 +164,7 @@ Nothing to change. Choose a binding direction, or turn OCR on.".to_string());
     }
     write_atomically(&destination, &bytes)?;
 
-    let mut message = format!("完了 / Done: {}", destination.display());
-    if let Some(r) = &report {
-        message.push('\n');
-        message.push_str(&describe(r));
-        if r.lines_text_only * 3 > r.lines_found && r.lines_found > 0 {
-            message.push_str(
-                "\n(置き換えなかった行が多いです。言語の選択が文書と合っているか確認してください。)\n(Many lines were not replaced. Check that the selected languages match the document.)",
-            );
-        }
-    }
+    let message = summarize(&destination.display().to_string(), report.as_ref());
     Ok(Outcome { destination, message, report })
 }
 
