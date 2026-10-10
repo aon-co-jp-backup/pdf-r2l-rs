@@ -13,11 +13,19 @@ use std::sync::{Arc, Mutex};
 const APP: &str = "pdf-r2l-rs";
 const LICENSES: &str = include_str!("../../../LICENSES.txt");
 
+/// 綴じ方向の選択(右綴じ / 左綴じ / 元と同じ)。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+enum BindingPref {
+    RightToLeft,
+    LeftToRight,
+    Keep,
+}
+
 /// 画面で選んだ内容。次回起動時に復元する。
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 struct Prefs {
-    right_to_left: bool,
+    binding: BindingPref,
     spread: bool,
     overwrite: bool,
     ocr: Settings,
@@ -25,7 +33,7 @@ struct Prefs {
 
 impl Default for Prefs {
     fn default() -> Self {
-        Prefs { right_to_left: true, spread: true, overwrite: false, ocr: Settings::default() }
+        Prefs { binding: BindingPref::RightToLeft, spread: true, overwrite: false, ocr: Settings::default() }
     }
 }
 
@@ -118,10 +126,10 @@ impl App {
     }
 
     fn binding(&self) -> Binding {
-        if self.prefs.right_to_left {
-            Binding::RightToLeft
-        } else {
-            Binding::LeftToRight
+        match self.prefs.binding {
+            BindingPref::RightToLeft => Binding::RightToLeft,
+            BindingPref::LeftToRight => Binding::LeftToRight,
+            BindingPref::Keep => Binding::Keep,
         }
     }
 
@@ -372,9 +380,10 @@ impl eframe::App for App {
                 });
                 ui.add_space(6.0);
                 ui.add_enabled_ui(!busy, |ui| {
-                    ui.radio_value(&mut self.prefs.right_to_left, true, "右綴じ (R2L) / Right binding");
-                    ui.radio_value(&mut self.prefs.right_to_left, false, "左綴じ (L2R) / Left binding");
-                    ui.checkbox(&mut self.prefs.spread, "見開き表示にする / Show as two-page spread");
+                    ui.radio_value(&mut self.prefs.binding, BindingPref::RightToLeft, "右綴じ (R2L) / Right binding");
+                    ui.radio_value(&mut self.prefs.binding, BindingPref::LeftToRight, "左綴じ (L2R) / Left binding");
+                    ui.radio_value(&mut self.prefs.binding, BindingPref::Keep, "元と同じ(綴じ方向・見開きを変更しない) / Same as the original (no change)");
+                    ui.add_enabled(self.prefs.binding != BindingPref::Keep, egui::Checkbox::new(&mut self.prefs.spread, "見開き表示にする / Show as two-page spread"));
                     ui.small("ビューアーで2ページ並べて表示します(右綴じは奇数ページが右、左綴じは左)。/ Viewers show two pages side by side (odd pages on the right for right binding, on the left for left binding).");
                     ui.add_space(4.0);
                     ui.radio_value(&mut self.prefs.overwrite, false, "別のファイルに保存 / Save as a new file");

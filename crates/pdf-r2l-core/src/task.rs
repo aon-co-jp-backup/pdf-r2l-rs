@@ -47,6 +47,7 @@ pub fn suggest_output_name(source: &Path, binding: Binding) -> String {
     let suffix = match binding {
         Binding::RightToLeft => "r2l",
         Binding::LeftToRight => "l2r",
+        Binding::Keep => "ocr",
     };
     format!("{stem}-{suffix}.pdf")
 }
@@ -104,6 +105,11 @@ pub fn run(task: &Task, cache_dir: &Path, progress: &mut dyn FnMut(Progress), ca
         }
         Output::InPlace { .. } => task.source.clone(),
     };
+    let ocr_on = task.ocr.as_ref().is_some_and(|s| s.enabled);
+    if task.direction.binding == Binding::Keep && !ocr_on {
+        return Err("変更する内容がありません。綴じ方向を選ぶか、OCR をオンにしてください。
+Nothing to change. Choose a binding direction, or turn OCR on.".to_string());
+    }
     let original = std::fs::read(&task.source).map_err(|e| format!("読み込みに失敗しました / Read failed: {e}"))?;
 
     let mut report = None;
@@ -113,7 +119,7 @@ pub fn run(task: &Task, cache_dir: &Path, progress: &mut dyn FnMut(Progress), ca
         bytes = out;
         report = Some(r);
     }
-    let bytes = apply(&bytes, task.direction)?;
+    let bytes = if task.direction.binding == Binding::Keep { bytes } else { apply(&bytes, task.direction)? };
 
     if let Output::InPlace { backup: true } = &task.output {
         let bak = backup_path(&task.source);
@@ -227,5 +233,25 @@ mod tests {
     fn suggests_names() {
         assert_eq!(suggest_output_name(Path::new("C:/x/本.pdf"), Binding::RightToLeft), "本-r2l.pdf");
         assert_eq!(suggest_output_name(Path::new("a.pdf"), Binding::LeftToRight), "a-l2r.pdf");
+    }
+}
+
+#[cfg(test)]
+mod keep_tests {
+    use super::*;
+    use crate::direction::{DirectionOptions, read_binding};
+
+    #[test]
+    fn keep_without_ocr_is_rejected_and_names_get_an_ocr_suffix() {
+        let d = std::env::temp_dir().join("pdf-r2l-core-keep");
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap_or_default();
+        let src = d.join("a.pdf");
+        std::fs::write(&src, b"%PDF-1.4").unwrap_or_default();
+        let task = Task { source: src.clone(), output: Output::NewFile(d.join("b.pdf")), direction: DirectionOptions { binding: Binding::Keep, spread: true }, ocr: None };
+        let err = run(&task, &d, &mut |_| {}, &|| false).err().unwrap_or_default();
+        assert!(err.contains("Nothing to change"), "{err}");
+        assert_eq!(suggest_output_name(&src, Binding::Keep), "a-ocr.pdf");
+        let _ = read_binding(b"");
     }
 }

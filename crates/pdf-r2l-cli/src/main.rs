@@ -1,6 +1,6 @@
 //! コマンドライン版。バッチ処理や自動試験に使う。
 //!
-//! 使い方: `pdf-r2l-cli 入力.pdf 出力.pdf [--ltr] [--no-spread] [--ocr URL] [--lang jpn+eng] [--fast] [--min-conf 70]`
+//! 使い方: `pdf-r2l-cli 入力.pdf 出力.pdf [--ltr|--keep] [--no-spread] [--ocr URL] [--lang jpn+eng] [--fast] [--min-conf 70]`
 //! `--in-place` を付けると、出力先を指定せず元のファイルを上書きする(元は `.bak` に残す)。
 
 use pdf_r2l_core::ocr::{Quality, Settings};
@@ -8,7 +8,7 @@ use pdf_r2l_core::{run, Binding, DirectionOptions, Output, Task};
 use std::path::PathBuf;
 
 fn usage() -> ! {
-    eprintln!("usage: pdf-r2l-cli IN.pdf OUT.pdf [--ltr] [--no-spread] [--ocr URL] [--lang jpn+eng] [--fast] [--search-only] [--min-conf N]\n       pdf-r2l-cli IN.pdf --in-place [options]");
+    eprintln!("usage: pdf-r2l-cli IN.pdf OUT.pdf [--ltr|--keep] [--no-spread] [--ocr URL] [--lang jpn+eng] [--fast] [--search-only] [--min-conf N]\n       pdf-r2l-cli IN.pdf --in-place [options]");
     std::process::exit(2);
 }
 
@@ -27,6 +27,7 @@ fn main() {
         }
     };
     let ltr = take_flag("--ltr");
+    let keep = take_flag("--keep");
     let no_spread = take_flag("--no-spread");
     let fast = take_flag("--fast");
     let search_only = take_flag("--search-only");
@@ -62,7 +63,7 @@ fn main() {
     let task = Task {
         source: src,
         output,
-        direction: DirectionOptions { binding: if ltr { Binding::LeftToRight } else { Binding::RightToLeft }, spread: !no_spread },
+        direction: DirectionOptions { binding: if keep { Binding::Keep } else if ltr { Binding::LeftToRight } else { Binding::RightToLeft }, spread: !no_spread },
         ocr,
     };
     let cache = pdf_r2l_core::ocr::settings::cache_dir("pdf-r2l-rs");

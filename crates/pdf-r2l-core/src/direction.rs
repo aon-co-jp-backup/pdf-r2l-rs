@@ -15,22 +15,26 @@ pub enum Binding {
     RightToLeft,
     /// 左綴じ(左から右へ読む)。
     LeftToRight,
+    /// 元と同じ(綴じ方向にも見開きにも触れない。OCR だけを使いたいとき)。
+    Keep,
 }
 
 impl Binding {
-    /// `/Direction` の値。
-    fn direction_name(self) -> &'static str {
+    /// `/Direction` の値(元と同じ なら無し)。
+    fn direction_name(self) -> Option<&'static str> {
         match self {
-            Binding::RightToLeft => "R2L",
-            Binding::LeftToRight => "L2R",
+            Binding::RightToLeft => Some("R2L"),
+            Binding::LeftToRight => Some("L2R"),
+            Binding::Keep => None,
         }
     }
 
     /// 見開き表示のときの `/PageLayout` の値(表紙などの奇数ページが、右綴じなら右・左綴じなら左に来る)。
-    fn spread_layout_name(self) -> &'static str {
+    fn spread_layout_name(self) -> Option<&'static str> {
         match self {
-            Binding::RightToLeft => "TwoColumnRight",
-            Binding::LeftToRight => "TwoColumnLeft",
+            Binding::RightToLeft => Some("TwoColumnRight"),
+            Binding::LeftToRight => Some("TwoColumnLeft"),
+            Binding::Keep => None,
         }
     }
 }
@@ -81,12 +85,14 @@ fn viewer_preferences_mut(doc: &mut Document, catalog: ObjectId) -> Result<&mut 
 
 /// 読み込み済みの文書に設定を書き込む(他の `/ViewerPreferences` の項目は保持する)。
 pub fn apply_to_document(doc: &mut Document, opts: DirectionOptions) -> Result<(), String> {
+    // 元と同じ なら、何も書き換えない。
+    let Some(direction) = opts.binding.direction_name() else {
+        return Ok(());
+    };
     let catalog = catalog_id(doc)?;
-    viewer_preferences_mut(doc, catalog)?.set("Direction", name(opts.binding.direction_name()));
-    if opts.spread {
-        doc.get_dictionary_mut(catalog)
-            .map_err(|e| e.to_string())?
-            .set("PageLayout", name(opts.binding.spread_layout_name()));
+    viewer_preferences_mut(doc, catalog)?.set("Direction", name(direction));
+    if let (true, Some(layout)) = (opts.spread, opts.binding.spread_layout_name()) {
+        doc.get_dictionary_mut(catalog).map_err(|e| e.to_string())?.set("PageLayout", name(layout));
     }
     Ok(())
 }
@@ -147,6 +153,14 @@ mod tests {
 
     fn opts(binding: Binding, spread: bool) -> DirectionOptions {
         DirectionOptions { binding, spread }
+    }
+
+    #[test]
+    fn keep_changes_nothing_even_with_spread() {
+        let src = minimal_pdf(Some((dictionary! {"HideToolbar"=>true}, false)));
+        let out = apply(&src, opts(Binding::Keep, true)).unwrap_or_default();
+        assert_eq!(read_binding(&out), Ok(None));
+        assert_eq!(page_layout(&out), None);
     }
 
     fn page_layout(pdf: &[u8]) -> Option<Vec<u8>> {

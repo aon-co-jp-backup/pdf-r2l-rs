@@ -8,7 +8,7 @@ and can **OCR scanned pages and replace the text with searchable text in a match
 
 ## 機能 / Features
 
-- **綴じ方向**: 右綴じ(R2L)/左綴じ(L2R)。PDF の `/ViewerPreferences /Direction` を設定します。他の表示設定は保持します。
+- **綴じ方向**: 右綴じ(R2L)/左綴じ(L2R)/**元と同じ**(変更しない。OCR だけ使いたいとき)。PDF の `/ViewerPreferences /Direction` を設定します。他の表示設定は保持します。
 - **見開き表示**: `/PageLayout` を `TwoColumnRight`(右綴じ)/`TwoColumnLeft`(左綴じ)にします(オフにもできます)。
 - **保存**: 別のファイルに保存(既定)/元のファイルを上書き(元は `.bak` に残します)。一時ファイル経由で保存するので、途中で失敗しても元のファイルを壊しません。
 - **OCR・テキストフォント文字化**(既定でオン、チェックを外すと元のデータのまま):
@@ -42,7 +42,7 @@ cargo build --release            # target/release/pdf-r2l-rs (GUI), pdf-r2l-cli 
 "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\pdf-r2l-rs.iss   # Windows installer
 ```
 
-コマンドライン版: `pdf-r2l-cli 入力.pdf 出力.pdf [--ltr] [--no-spread] [--ocr URL] [--lang jpn+eng] [--fast] [--search-only]`
+コマンドライン版: `pdf-r2l-cli 入力.pdf 出力.pdf [--ltr|--keep] [--no-spread] [--ocr URL] [--lang jpn+eng] [--fast] [--search-only]`
 
 依存を変えたら `scripts/gen-third-party.ps1 > licenses/third-party.txt` の後に `sh scripts/build-licenses.sh` で `LICENSES.txt` を再生成してください。
 
