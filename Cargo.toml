@@ -3,7 +3,7 @@ members = ["crates/pdf-r2l-core", "crates/pdf-r2l-desktop", "crates/pdf-r2l-cli"
 resolver = "2"
 
 [workspace.package]
-version = "1.1.0"
+version = "1.1.1"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/aon-co-jp/pdf-r2l-rs"
@@ -11,11 +11,15 @@ authors = ["aon-co-jp"]
 
 [workspace.dependencies]
 # OCR・テキストフォント文字化・ページ描画の共有クレート(RPoem)。rev で固定する。
-open-runo-pdf-ocr = { git = "https://github.com/aon-co-jp/RPoem", rev = "950f3be40f8c20d5a7389155a6c6307702683868" }
+open-runo-pdf-ocr = { git = "https://github.com/aon-co-jp/RPoem", rev = "554c253d601e9a3c4dc7eac42b9a942bca17e4f9" }
 lopdf = "0.34"
-open-runo-sr = { git = "https://github.com/aon-co-jp/RPoem", rev = "950f3be40f8c20d5a7389155a6c6307702683868" }
+open-runo-sr = { git = "https://github.com/aon-co-jp/RPoem", rev = "554c253d601e9a3c4dc7eac42b9a942bca17e4f9" }
 
 [profile.release]
 opt-level = "s"
 lto = true
 strip = true
+
+# 超解像の計算ループは速度優先(他はサイズ優先のまま)。
+[profile.release.package.open-runo-sr]
+opt-level = 3

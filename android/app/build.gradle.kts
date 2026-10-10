@@ -11,8 +11,8 @@ android {
         applicationId = "tokyo.aon.pdfr2lrs"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.1.0"
+        versionCode = 5
+        versionName = "1.1.1"
     }
 
     // 署名鍵は環境変数からのみ受け取る(keystoreも秘密もコミットしない)。揃っていなければ署名なしのreleaseになる。

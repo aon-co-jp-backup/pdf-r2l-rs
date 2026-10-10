@@ -1,6 +1,6 @@
 ﻿[Setup]
 AppName=PDF R2L RS
-AppVersion=1.1.0
+AppVersion=1.1.1
 AppPublisher=aon-co-jp
 DefaultDirName={autopf}\PDF R2L RS
 DefaultGroupName=PDF R2L RS

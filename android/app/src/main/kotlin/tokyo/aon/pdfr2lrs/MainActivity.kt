@@ -224,6 +224,21 @@ class MainActivity : Activity() {
     /** デバッグビルド専用の試験用フック: `--es debug_input <filesDir内のPDF> --es debug_output <保存先>` で、画面を使わずに変換して結果を logcat(PDFR2L)へ出す。 */
     private fun debugRun() {
         val debuggable = (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        intent?.getStringExtra("debug_image")?.let { img ->
+            if (!debuggable) return
+            val target = intent?.getStringExtra("debug_target") ?: "fhd"
+            Thread {
+                val t = System.currentTimeMillis()
+                try {
+                    val out = Native.upscale(java.io.File(filesDir, img).readBytes(), target, intent?.getBooleanExtra("debug_ai", true) ?: true, true)
+                    java.io.File(filesDir, "$img.$target.png").writeBytes(out)
+                    android.util.Log.i("PDFR2L", "IMG DONE in " + (System.currentTimeMillis() - t) + "ms: " + Native.message().replace(Char(10), '|'))
+                } catch (e: Throwable) {
+                    android.util.Log.e("PDFR2L", "IMG FAILED: " + e.message)
+                }
+            }.start()
+            return
+        }
         val input = intent?.getStringExtra("debug_input")
         val output = intent?.getStringExtra("debug_output")
         if (!debuggable || input == null || output == null) return
