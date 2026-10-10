@@ -29,6 +29,28 @@ Releases から、お使いの OS 用のものを入手します。
 | Linux | `pdf-r2l-rs_*.deb`(Debian/Ubuntu 系)または `pdf-r2l-rs-x86_64.tar.gz` |
 | Android | `pdf-r2l-rs.apk`(署名済み。Android 8.0 以上。「提供元不明のアプリ」の許可が必要) |
 
+## 画像の高解像度化 / Upscale images (v1.1.0)
+
+**日本語**: 写真・画像(PNG/JPEG)を、**フルHD / QHD(FHDと4Kの間) / 4K / 5K(4Kと8Kの間) / 8K / 16K** の枠(縦横比を保って収める)へ拡大します。
+AI超解像(Real-ESRGAN realesr-general-x4v3、CPU)+高品質な補間。AIを使わず補間のみも選べます。使うかどうかは利用者の自由で、元の画像は変更せず別名で保存します。
+AI超解像は失われた細部を**推測して補う**もので、実際の細部の復元ではありません。CPU処理のため時間がかかり(Arm のスマホは特に遅い)、8K・16K は大量のメモリとファイルサイズが必要です。
+デスクトップ版は複数枚をまとめて処理、Android 版は1枚ずつです。Android 版の画面は本リリースの時点でコンパイルとネイティブ側の試験まで(実機・エミュレーターでの操作確認は未実施)。
+
+**English**: Enlarge photos/images (PNG/JPEG) to Full HD / QHD (between FHD and 4K) / 4K / 5K (between 4K and 8K) / 8K / 16K frames, keeping the aspect ratio, using
+CPU AI super-resolution (Real-ESRGAN realesr-general-x4v3) plus high-quality resampling (interpolation-only is selectable). Entirely optional; the original is never modified.
+AI super-resolution guesses missing detail rather than restoring it; it is slow on the CPU (especially on Arm phones), and 8K/16K need lots of memory and disk.
+The desktop app batches several images; Android handles one at a time. The Android screen of this release was compiled and tested at the native level only (not yet exercised on a device/emulator).
+
+## 次版の予定: AI文脈補正 / Next: AI context completion
+
+**日本語**: OCRでかすれて読めない文字を、**前後の長い文脈から推測して1〜2文字だけ穴埋めする**機能です(長文の書き換えではありません)。
+方針: Tesseractの低信頼の文字と代替候補を取り出し、前後の文脈つきで言語モデルが各候補の尤もらしさを採点して選ぶ(`open-cpu` / `open-cuda` の推論エンジンで
+候補の対数尤度を返すAPIが必要。現在の `POST /v1/ocr/correct` は行単位の書き換え方式で、試験の結果、実用速度に届かないため実験扱い)。
+
+**English**: Fill in just one or two smudged/unreadable characters using the long surrounding context (not long-text rewriting). Plan: take low-confidence characters and
+alternative candidates from Tesseract, then let a language model score each candidate in context (needs a log-likelihood API in the open-cpu / open-cuda engines). The current
+line-rewrite endpoint `POST /v1/ocr/correct` is experimental because it is too slow in practice.
+
 ## OCR を使うには / Using OCR
 
 既定の接続先は、同じ PC で動いている `aruaru-llm`(`http://127.0.0.1:4600`)です。アプリの「OCR設定」で別の URL(LAN 内の別の端末など)に変更し、

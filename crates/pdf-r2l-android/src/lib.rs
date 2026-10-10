@@ -149,6 +149,46 @@ pub extern "system" fn Java_tokyo_aon_pdfr2lrs_Native_testConnection<'l>(mut env
     }
 }
 
+/// 画像の高解像度化(バイト列)。`target`: fhd/qhd/4k/5k/8k/16k、`ai`: AI 超解像か補間のみか、`png`: 形式。
+/// 結果の大きさ等は message() に入る。失敗・キャンセルは RuntimeException。
+pub fn upscale_image_bytes(input: &[u8], target: &str, ai: bool, png: bool) -> Result<Vec<u8>, String> {
+    use pdf_r2l_core::upscale::{upscale_bytes, ImageFormat, ImageTarget};
+    use pdf_r2l_core::sr::Options as ImageOptions;
+    let target = match target {
+        "fhd" => ImageTarget::FullHd,
+        "qhd" => ImageTarget::Qhd,
+        "5k" => ImageTarget::Uhd5k,
+        "8k" => ImageTarget::Uhd8k,
+        "16k" => ImageTarget::Uhd16k,
+        _ => ImageTarget::Uhd4k,
+    };
+    CANCEL.store(false, Ordering::Relaxed);
+    set(&PROGRESS, String::new());
+    let opts = ImageOptions { target, ai, format: if png { ImageFormat::Png } else { ImageFormat::Jpeg }, threads: 0 };
+    let (bytes, w, h, used_ai) = upscale_bytes(input, opts, &mut |p| set(&PROGRESS, format!("image|{}|{}", (p.fraction * 100.0) as u32, p.stage)), &|| CANCEL.load(Ordering::Relaxed))?;
+    set(&MESSAGE, format!("完了: {w}×{h}({})
+Done: {w}x{h} ({})", if used_ai { "AI超解像" } else { "補間のみ" }, if used_ai { "AI super-resolution" } else { "interpolation only" }));
+    Ok(bytes)
+}
+
+/// `external fun upscale(input: ByteArray, target: String, ai: Boolean, png: Boolean): ByteArray`
+#[no_mangle]
+pub extern "system" fn Java_tokyo_aon_pdfr2lrs_Native_upscale<'l>(mut env: JNIEnv<'l>, _c: JClass<'l>, input: JByteArray<'l>, target: JString<'l>, ai: jni::sys::jboolean, png: jni::sys::jboolean) -> JByteArray<'l> {
+    let null = || unsafe { JByteArray::from_raw(std::ptr::null_mut()) };
+    let (Ok(bytes), Ok(target)) = (env.convert_byte_array(&input), env.get_string(&target)) else {
+        throw(&mut env, "invalid arguments");
+        return null();
+    };
+    let target: String = target.into();
+    match upscale_image_bytes(&bytes, &target, ai != 0, png != 0) {
+        Ok(out) => env.byte_array_from_slice(&out).unwrap_or_else(|_| null()),
+        Err(msg) => {
+            throw(&mut env, &msg);
+            null()
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -159,5 +199,16 @@ mod tests {
         let prefs = r#"{"binding":"keep","spread":true,"ocr":{"enabled":false}}"#;
         let err = convert_bytes(b"x", prefs, "/tmp").err().unwrap_or_default();
         assert!(err.contains("Nothing to change"), "{err}");
+    }
+
+    #[test]
+    fn upscales_a_small_image_and_rejects_garbage() {
+        assert!(upscale_image_bytes(b"not an image", "4k", false, true).is_err());
+        let mut png = Vec::new();
+        let img = image::RgbImage::from_pixel(64, 48, image::Rgb([10, 120, 200]));
+        img.write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png).unwrap();
+        let out = upscale_image_bytes(&png, "fhd", false, true).unwrap();
+        assert!(out.len() > png.len());
+        assert!(get(&MESSAGE).contains("Done"));
     }
 }

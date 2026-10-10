@@ -14,5 +14,7 @@ object Native {
     @JvmStatic external fun cancel()
     @JvmStatic external fun defaultsJson(): String
     @JvmStatic external fun languagesJson(): String
+    /** 画像を高解像度化(target: fhd/qhd/4k/5k/8k/16k)。失敗・キャンセルは RuntimeException。 */
+    @JvmStatic external fun upscale(input: ByteArray, target: String, ai: Boolean, png: Boolean): ByteArray
     @JvmStatic external fun testConnection(url: String): String
 }

@@ -41,3 +41,34 @@ tessdata_best / tessdata_fast(Apache-2.0)です。
 ------------------------------------------------------------------------------
 Crate list / クレート一覧
 ------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------
+Image up-conversion model / 画像の高解像度化モデル
+------------------------------------------------------------------------------
+[English]
+The "Upscale images" feature uses the Real-ESRGAN "realesr-general-x4v3" super-resolution
+network (weights and architecture by Xintao Wang et al.), run on the CPU by code ported
+within the aon-co-jp projects (RPoem open-runo-sr, MIT OR Apache-2.0). Real-ESRGAN is
+distributed under the BSD 3-Clause License:
+
+  Copyright (c) 2021, Xintao Wang. All rights reserved.
+  Redistribution and use in source and binary forms, with or without modification, are
+  permitted provided that the following conditions are met: (1) Redistributions of source
+  code must retain the above copyright notice, this list of conditions and the following
+  disclaimer. (2) Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation and/or other
+  materials provided with the distribution. (3) Neither the name of the copyright holder nor
+  the names of its contributors may be used to endorse or promote products derived from this
+  software without specific prior written permission.
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
+  OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+  COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+  EXEMPLARY, OR CONSEQUENTIAL DAMAGES ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE.
+
+[日本語]
+「画像の高解像度化」機能は、Real-ESRGAN の "realesr-general-x4v3" 超解像ネットワーク
+(Xintao Wang 氏ら)を使い、aon-co-jp のプロジェクト内で移植したコード(RPoem の
+open-runo-sr、MIT OR Apache-2.0)で CPU 上で動かします。Real-ESRGAN は BSD 3-Clause
+ライセンス(上記の英文が正本。著作権表示と免責の保持を条件に再配布・利用できる)です。
+AI超解像は失われた細部を推測して補うもので、実際の細部の復元ではありません。

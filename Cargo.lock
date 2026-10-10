@@ -2773,6 +2773,7 @@ checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 name = "pdf-r2l-android"
 version = "1.0.3"
 dependencies = [
+ "image",
  "jni 0.21.1",
  "pdf-r2l-core",
  "serde",

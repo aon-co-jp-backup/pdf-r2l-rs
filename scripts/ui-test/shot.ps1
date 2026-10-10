@@ -1,4 +1,4 @@
-﻿param([string]$Exe, [string]$Out, [string]$UiDebug = "", [int]$Wait = 3)
+﻿param([string]$Exe, [string]$Out, [string]$UiDebug = "", [int]$Wait = 3, [string]$ArgList = "")
 Add-Type -AssemblyName System.Drawing
 Add-Type @"
 using System;
@@ -12,7 +12,7 @@ public class W {
 "@
 [W]::SetProcessDPIAware() | Out-Null
 if ($UiDebug -ne "") { $env:PDFR2L_UI_DEBUG = $UiDebug }
-$p = Start-Process -FilePath $Exe -PassThru
+if ($ArgList -ne "") { $p = Start-Process -FilePath $Exe -ArgumentList $ArgList -PassThru } else { $p = Start-Process -FilePath $Exe -PassThru }
 Start-Sleep -Seconds $Wait
 $p.Refresh()
 $h = $p.MainWindowHandle

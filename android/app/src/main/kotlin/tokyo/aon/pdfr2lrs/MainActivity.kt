@@ -62,6 +62,10 @@ class MainActivity : Activity() {
 
         add(label("PDF 綴じ方向変更 / PDF binding direction", 20f, true))
         add(Button(this).apply {
+            text = "画像の高解像度化 / Upscale images (FHD〜16K)"
+            setOnClickListener { startActivity(Intent(this@MainActivity, ImageActivity::class.java)) }
+        })
+        add(Button(this).apply {
             text = "PDFを選択 / Choose PDF"
             setOnClickListener {
                 startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
