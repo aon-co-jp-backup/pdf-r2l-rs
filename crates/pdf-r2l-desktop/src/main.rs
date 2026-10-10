@@ -455,6 +455,20 @@ impl App {
                     ui.add(egui::Slider::new(&mut self.prefs.ocr.min_confidence, 0.0..=90.0).step_by(5.0));
                 });
                 ui.small("この値より自信のない行は、元の画像のまま残し、検索用の見えない文字だけ追加します。/ Lines below this confidence keep the original image and only get invisible searchable text.");
+                ui.add_space(6.0);
+                ui.separator();
+                ui.checkbox(&mut self.prefs.ocr.fill, "AI文脈補完(かすれて読めない1〜2文字を、前後の文脈から推測して穴埋め) / AI context completion (guess one or two faded characters from the surrounding text)");
+                ui.small("信頼度の低い短い単語・欠けた文字・余計な1文字だけを対象に、言語モデルが候補を文脈つきで採点し、十分に尤もらしいときだけ直します。長文は書き換えません。推測なので誤ることがあります(特に、まるごと消えた文字)。サーバーに言語モデル(例: Qwen2.5)の導入が必要で、CPUでは1か所あたり数秒かかります。\nOnly low-confidence short words, missing characters and stray single characters are considered; a language model scores candidates in context and a change is made only when clearly more likely. Long text is never rewritten. It is a guess and can be wrong (especially for a fully erased character). The server needs a language model (e.g. Qwen2.5) and each spot takes seconds on a CPU.");
+                if self.prefs.ocr.fill {
+                    ui.horizontal(|ui| {
+                        ui.label("補完サーバーURL(空ならOCRと同じ) / Completion server URL (blank = same as OCR):");
+                        ui.add(egui::TextEdit::singleline(&mut self.prefs.ocr.fill_server_url).desired_width(260.0));
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("補完する最大箇所数 / Max spots:");
+                        ui.add(egui::Slider::new(&mut self.prefs.ocr.fill_max_spots, 5..=200).step_by(5.0));
+                    });
+                }
             });
         });
     }

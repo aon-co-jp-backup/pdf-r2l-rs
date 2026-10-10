@@ -152,6 +152,23 @@ class MainActivity : Activity() {
             listOf("replace" to "元の書体に合わせた文字に置き換える / Replace with text in the matching typeface", "search" to "元の画像はそのまま、検索用の見えない文字だけ追加 / Keep the original image; add invisible searchable text only"),
             if (ocr.optBoolean("replace_text", true)) "replace" else "search",
         ) { ocr.put("replace_text", it == "replace"); savePrefs() })
+        ocrPanel.addView(label("AI文脈補完 / AI context completion:", 13f, true))
+        ocrPanel.addView(CheckBox(this).apply {
+            text = "かすれて読めない1〜2文字を、前後の文脈から推測して穴埋め / Guess one or two faded characters from the surrounding text"
+            isChecked = ocr.optBoolean("fill", false)
+            setOnCheckedChangeListener { _, v -> ocr.put("fill", v); savePrefs() }
+        })
+        ocrPanel.addView(label("低信頼の短い単語・欠けた文字・余計な1文字だけが対象で、長文は書き換えません。推測なので誤ることがあります。サーバーに言語モデル(例: Qwen2.5)が必要です。\nOnly low-confidence short words, missing characters and stray characters are considered; long text is never rewritten. It is a guess and can be wrong. The server needs a language model (e.g. Qwen2.5).", 11f))
+        ocrPanel.addView(label("補完サーバーURL(空ならOCRと同じ) / Completion server URL (blank = same as OCR)", 12f))
+        ocrPanel.addView(EditText(this).apply {
+            setText(ocr.optString("fill_server_url", ""))
+            setSingleLine()
+            addTextChangedListener(object : android.text.TextWatcher {
+                override fun afterTextChanged(s: android.text.Editable?) { ocr.put("fill_server_url", s.toString().trim()); savePrefs() }
+                override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+                override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            })
+        })
         add(ocrPanel)
 
         // 変換ボタン・進捗・結果は、設定が長くても常に見えるよう、画面下に固定する。

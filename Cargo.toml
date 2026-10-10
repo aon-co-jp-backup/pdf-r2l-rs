@@ -3,7 +3,7 @@ members = ["crates/pdf-r2l-core", "crates/pdf-r2l-desktop", "crates/pdf-r2l-cli"
 resolver = "2"
 
 [workspace.package]
-version = "1.1.1"
+version = "1.2.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/aon-co-jp/pdf-r2l-rs"
@@ -11,9 +11,9 @@ authors = ["aon-co-jp"]
 
 [workspace.dependencies]
 # OCR・テキストフォント文字化・ページ描画の共有クレート(RPoem)。rev で固定する。
-open-runo-pdf-ocr = { git = "https://github.com/aon-co-jp/RPoem", rev = "554c253d601e9a3c4dc7eac42b9a942bca17e4f9" }
+open-runo-pdf-ocr = { git = "https://github.com/aon-co-jp/RPoem", rev = "883735ef867f4e2375b457cd2cdae924a6ac8a16" }
 lopdf = "0.34"
-open-runo-sr = { git = "https://github.com/aon-co-jp/RPoem", rev = "554c253d601e9a3c4dc7eac42b9a942bca17e4f9" }
+open-runo-sr = { git = "https://github.com/aon-co-jp/RPoem", rev = "883735ef867f4e2375b457cd2cdae924a6ac8a16" }
 
 [profile.release]
 opt-level = "s"
