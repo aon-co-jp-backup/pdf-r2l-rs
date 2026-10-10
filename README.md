@@ -27,6 +27,7 @@ Releases から、お使いの OS 用のものを入手します。
 | Windows | `pdf-r2l-rs-setup.exe`(インストーラー) |
 | macOS | `pdf-r2l-rs-*.dmg`(未署名・未公証。初回は右クリック→「開く」) |
 | Linux | `pdf-r2l-rs_*.deb`(Debian/Ubuntu 系)または `pdf-r2l-rs-x86_64.tar.gz` |
+| Android | `pdf-r2l-rs.apk`(署名済み。Android 8.0 以上。「提供元不明のアプリ」の許可が必要) |
 
 ## OCR を使うには / Using OCR
 
