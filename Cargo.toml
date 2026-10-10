@@ -11,8 +11,9 @@ authors = ["aon-co-jp"]
 
 [workspace.dependencies]
 # OCR・テキストフォント文字化・ページ描画の共有クレート(RPoem)。rev で固定する。
-open-runo-pdf-ocr = { git = "https://github.com/aon-co-jp/RPoem", rev = "cba8b2c1d0405222ed556c9bcff6658da39f3317" }
+open-runo-pdf-ocr = { git = "https://github.com/aon-co-jp/RPoem", rev = "950f3be40f8c20d5a7389155a6c6307702683868" }
 lopdf = "0.34"
+open-runo-sr = { git = "https://github.com/aon-co-jp/RPoem", rev = "950f3be40f8c20d5a7389155a6c6307702683868" }
 
 [profile.release]
 opt-level = "s"

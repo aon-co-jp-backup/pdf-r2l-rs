@@ -1923,6 +1923,8 @@ dependencies = [
  "moxcms",
  "num-traits",
  "png",
+ "zune-core",
+ "zune-jpeg",
 ]
 
 [[package]]
@@ -2683,7 +2685,7 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 [[package]]
 name = "open-runo-pdf-ocr"
 version = "0.1.0"
-source = "git+https://github.com/aon-co-jp/RPoem?rev=cba8b2c1d0405222ed556c9bcff6658da39f3317#cba8b2c1d0405222ed556c9bcff6658da39f3317"
+source = "git+https://github.com/aon-co-jp/RPoem?rev=950f3be40f8c20d5a7389155a6c6307702683868#950f3be40f8c20d5a7389155a6c6307702683868"
 dependencies = [
  "base64 0.22.1",
  "hayro",
@@ -2693,6 +2695,14 @@ dependencies = [
  "subsetter",
  "ttf-parser",
  "ureq",
+]
+
+[[package]]
+name = "open-runo-sr"
+version = "0.1.0"
+source = "git+https://github.com/aon-co-jp/RPoem?rev=950f3be40f8c20d5a7389155a6c6307702683868#950f3be40f8c20d5a7389155a6c6307702683868"
+dependencies = [
+ "image",
 ]
 
 [[package]]
@@ -2780,8 +2790,10 @@ dependencies = [
 name = "pdf-r2l-core"
 version = "1.0.3"
 dependencies = [
+ "image",
  "lopdf",
  "open-runo-pdf-ocr",
+ "open-runo-sr",
 ]
 
 [[package]]

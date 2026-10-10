@@ -10,3 +10,5 @@ authors.workspace = true
 [dependencies]
 lopdf = { workspace = true }
 open-runo-pdf-ocr = { workspace = true }
+open-runo-sr = { workspace = true }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }

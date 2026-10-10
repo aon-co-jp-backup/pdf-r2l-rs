@@ -4,7 +4,8 @@
 use eframe::egui;
 use pdf_r2l_core::ocr::languages::{self, FEATURE_NOTE_EN, FEATURE_NOTE_JA, LANGUAGES, LANGUAGE_HELP_EN, LANGUAGE_HELP_JA, QUALITY_HELP_EN, QUALITY_HELP_JA};
 use pdf_r2l_core::ocr::{settings as ocr_dirs, OcrClient, Progress, Quality, Settings, Stage, MAX_LANGUAGES};
-use pdf_r2l_core::{run, suggest_output_name, Binding, DirectionOptions, Output, Task};
+use pdf_r2l_core::sr::{output_size, Format as ImgFormat, Options as SrOptions, Target};
+use pdf_r2l_core::{image_dimensions, run, suggest_output_name, summarize_images, upscale_files, Binding, DirectionOptions, Output, Task};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -29,11 +30,19 @@ struct Prefs {
     spread: bool,
     overwrite: bool,
     ocr: Settings,
+    /// 「画像の高解像度化」タブを開いているか。
+    tab_images: bool,
+    /// 目標の解像度(`Target::ALL` の添字)。
+    img_target: usize,
+    /// AI 超解像を使うか(偽なら高品質な補間のみ)。
+    img_ai: bool,
+    /// JPEG で保存するか(偽なら PNG)。
+    img_jpeg: bool,
 }
 
 impl Default for Prefs {
     fn default() -> Self {
-        Prefs { binding: BindingPref::RightToLeft, spread: true, overwrite: false, ocr: Settings::default() }
+        Prefs { binding: BindingPref::RightToLeft, spread: true, overwrite: false, ocr: Settings::default(), tab_images: false, img_target: 2, img_ai: true, img_jpeg: false }
     }
 }
 
@@ -53,12 +62,15 @@ struct Shared {
     running: bool,
     progress: Option<Progress>,
     result: Option<Result<(String, PathBuf), String>>,
+    /// 画像の高解像度化の進捗(0〜1, 説明)。
+    img_progress: Option<(f32, String)>,
     testing: bool,
     test_result: Option<Result<String, String>>,
 }
 
 struct App {
     src: Option<PathBuf>,
+    images: Vec<PathBuf>,
     prefs: Prefs,
     saved: Prefs,
     language_window: bool,
@@ -66,6 +78,11 @@ struct App {
     language_filter: String,
     shared: Arc<Mutex<Shared>>,
     cancel: Arc<AtomicBool>,
+}
+
+/// 画像ファイル(PNG・JPEG)か。
+fn is_image(p: &std::path::Path) -> bool {
+    p.extension().is_some_and(|e| ["png", "jpg", "jpeg"].iter().any(|x| e.eq_ignore_ascii_case(x)))
 }
 
 const FONT_CANDIDATES: &[&str] = &[
@@ -115,8 +132,14 @@ impl App {
         let ui_debug = std::env::var("PDFR2L_UI_DEBUG").unwrap_or_default();
         // 起動引数の PDF(「このアプリで開く」・ドロップ・コマンドライン)を最初から選んでおく。
         let initial = std::env::args_os().skip(1).map(PathBuf::from).find(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("pdf")) && p.is_file());
+        let images: Vec<PathBuf> = std::env::args_os().skip(1).map(PathBuf::from).filter(|p| is_image(p) && p.is_file()).collect();
+        let mut prefs = prefs;
+        if initial.is_none() && !images.is_empty() {
+            prefs.tab_images = true;
+        }
         App {
             src: initial,
+            images,
             saved: prefs.clone(),
             prefs,
             language_window: ui_debug == "lang",
@@ -219,6 +242,96 @@ impl App {
             }
             ctx.request_repaint();
         });
+    }
+
+    /// 画像の高解像度化を、別スレッドで始める。保存先は、元の画像と同じフォルダ(`名前-4k.png` のように印を付ける)。
+    fn start_images(&mut self, ctx: &egui::Context) {
+        if self.images.is_empty() {
+            return;
+        }
+        let target = Target::ALL[self.prefs.img_target.min(Target::ALL.len() - 1)];
+        let opts = SrOptions { target, ai: self.prefs.img_ai, format: if self.prefs.img_jpeg { ImgFormat::Jpeg } else { ImgFormat::Png }, threads: 0 };
+        let inputs = self.images.clone();
+        let out_dir = inputs[0].parent().map(|p| p.to_path_buf()).unwrap_or_else(|| PathBuf::from("."));
+        if let Ok(mut s) = self.shared.lock() {
+            s.running = true;
+            s.img_progress = Some((0.0, "開始中… / Starting…".to_string()));
+            s.result = None;
+        }
+        self.cancel.store(false, Ordering::Relaxed);
+        let (shared, cancel, ctx) = (Arc::clone(&self.shared), Arc::clone(&self.cancel), ctx.clone());
+        std::thread::spawn(move || {
+            let res = upscale_files(
+                &inputs,
+                &out_dir,
+                opts,
+                &mut |f, text| {
+                    if let Ok(mut s) = shared.lock() {
+                        s.img_progress = Some((f, text));
+                    }
+                    ctx.request_repaint();
+                },
+                &|| cancel.load(Ordering::Relaxed),
+            );
+            if let Ok(mut s) = shared.lock() {
+                s.running = false;
+                s.img_progress = None;
+                s.result = Some(res.map(|o| {
+                    let dest = o.first().map(|x| x.destination.clone()).unwrap_or_default();
+                    (summarize_images(&o), dest)
+                }));
+            }
+            ctx.request_repaint();
+        });
+    }
+
+    /// 「画像の高解像度化」タブの中身。
+    fn image_section(&mut self, ui: &mut egui::Ui, busy: bool) {
+        ui.label("画像(PNG・JPEG)をドラッグ&ドロップ、または選択(複数可): / Drop images (PNG/JPEG) here, or choose some:");
+        ui.add_enabled_ui(!busy, |ui| {
+            if ui.button("画像を選択… / Choose images…").clicked() {
+                if let Some(p) = rfd::FileDialog::new().add_filter("Images", &["png", "jpg", "jpeg"]).pick_files() {
+                    self.images = p;
+                }
+            }
+        });
+        if self.images.is_empty() {
+            ui.label("(未選択 / none)");
+        } else {
+            egui::ScrollArea::vertical().id_salt("img_list").max_height(80.0).show(ui, |ui| {
+                for p in &self.images {
+                    ui.label(p.display().to_string());
+                }
+            });
+        }
+        let first_dims = self.images.first().and_then(|p| image_dimensions(p).ok());
+        if let Some((w, h)) = first_dims {
+            ui.small(format!("1枚目の元の大きさ / First image: {w}×{h}"));
+        }
+        ui.add_space(6.0);
+        ui.label("目標の解像度(縦横比を保って、この枠に収めます) / Target resolution (fits inside this frame, keeping the aspect ratio):");
+        ui.add_enabled_ui(!busy, |ui| {
+            for (i, t) in Target::ALL.iter().enumerate() {
+                let (ja, en) = t.label();
+                let size = first_dims.map(|(w, h)| output_size(w, h, *t)).map(|(w, h)| format!(" → {w}×{h}")).unwrap_or_default();
+                ui.radio_value(&mut self.prefs.img_target, i, format!("{ja} / {en}{size}"));
+            }
+            ui.add_space(4.0);
+            ui.radio_value(&mut self.prefs.img_ai, true, "AI超解像で細部を補って拡大(おすすめ・時間がかかる) / Enlarge with AI super-resolution (recommended, slow)");
+            ui.radio_value(&mut self.prefs.img_ai, false, "高品質な補間のみで拡大(速い・細部は補わない) / High-quality interpolation only (fast, no added detail)");
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                ui.label("保存形式 / Format:");
+                ui.radio_value(&mut self.prefs.img_jpeg, false, "PNG(可逆・大きい) / PNG (lossless, large)");
+                ui.radio_value(&mut self.prefs.img_jpeg, true, "JPEG(小さい) / JPEG (small)");
+            });
+        });
+        ui.add_space(6.0);
+        ui.small(
+            "元の画像は変更せず、同じフォルダに「名前-4k.png」のように保存します。\nOriginals are untouched; results are saved next to them, e.g. \"name-4k.png\".\n\
+             AI超解像は失われた細部を推測して補うもので、実際にあった細部の復元ではありません。CPUで処理するため時間がかかり(200万画素で数十秒〜数分)、8K・16Kはメモリとファイルサイズも大きくなります。Arm の CPU では特に遅くなります。\n\
+             AI super-resolution guesses missing detail; it is not a restoration of real detail. It runs on the CPU and is slow (tens of seconds to minutes for 2 megapixels); 8K and 16K need a lot of memory and disk space, and Arm CPUs are much slower.",
+        );
     }
 
     fn language_summary(&self) -> String {
@@ -352,8 +465,14 @@ impl eframe::App for App {
         let busy = self.running();
         if !busy {
             ctx.input(|i| {
-                if let Some(f) = i.raw.dropped_files.first().and_then(|f| f.path.clone()) {
-                    self.src = Some(f);
+                let paths: Vec<PathBuf> = i.raw.dropped_files.iter().filter_map(|f| f.path.clone()).collect();
+                let pics: Vec<PathBuf> = paths.iter().filter(|p| is_image(p)).cloned().collect();
+                if let Some(pdf) = paths.iter().find(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("pdf"))) {
+                    self.src = Some(pdf.clone());
+                    self.prefs.tab_images = false;
+                } else if !pics.is_empty() {
+                    self.images = pics;
+                    self.prefs.tab_images = true;
                 }
             });
         }
@@ -369,9 +488,15 @@ impl eframe::App for App {
         egui::TopBottomPanel::bottom("actions").show(ctx, |ui| {
             ui.add_space(4.0);
             ui.horizontal(|ui| {
-                let label = if self.prefs.overwrite { "変換して上書き / Convert and overwrite" } else { "変換して保存… / Convert and save…" };
-                if ui.add_enabled(self.src.is_some() && !busy, egui::Button::new(label)).clicked() {
-                    self.start(ctx, None);
+                if self.prefs.tab_images {
+                    if ui.add_enabled(!self.images.is_empty() && !busy, egui::Button::new("画像を高解像度化 / Upscale images")).clicked() {
+                        self.start_images(ctx);
+                    }
+                } else {
+                    let label = if self.prefs.overwrite { "変換して上書き / Convert and overwrite" } else { "変換して保存… / Convert and save…" };
+                    if ui.add_enabled(self.src.is_some() && !busy, egui::Button::new(label)).clicked() {
+                        self.start(ctx, None);
+                    }
                 }
                 if busy && ui.button("キャンセル / Cancel").clicked() {
                     self.cancel.store(true, Ordering::Relaxed);
@@ -382,7 +507,9 @@ impl eframe::App for App {
             });
             let mut offline_fallback = false;
             if let Ok(s) = self.shared.lock() {
-                if s.running {
+                if let (true, Some((f, text))) = (s.running, &s.img_progress) {
+                    ui.add(egui::ProgressBar::new(*f).text(text.clone()));
+                } else if s.running {
                     match &s.progress {
                         Some(p) => {
                             let frac = if p.total == 0 { 0.0 } else { p.done as f32 / p.total as f32 };
@@ -419,7 +546,18 @@ impl eframe::App for App {
         });
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
-                ui.heading("PDF 綴じ方向変更 / PDF binding direction");
+                ui.heading("PDF R2L RS");
+                ui.add_enabled_ui(!busy, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.selectable_value(&mut self.prefs.tab_images, false, "PDF 綴じ方向・OCR / PDF binding & OCR");
+                        ui.selectable_value(&mut self.prefs.tab_images, true, "画像の高解像度化 / Upscale images");
+                    });
+                });
+                ui.separator();
+                if self.prefs.tab_images {
+                    self.image_section(ui, busy);
+                    return;
+                }
                 ui.add_space(6.0);
                 ui.label("PDFファイルをドラッグ&ドロップ、または選択: / Drop a PDF here, or choose one:");
                 ui.horizontal(|ui| {
