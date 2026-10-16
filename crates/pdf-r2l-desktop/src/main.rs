@@ -47,7 +47,7 @@ impl Default for Prefs {
 }
 
 fn load_prefs() -> Prefs {
-    std::fs::read_to_string(ocr_dirs::config_dir(APP).join("prefs.json")).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default()
+    std::fs::read_to_string(ocr_dirs::config_dir(APP).join("prefs.json")).ok().and_then(|s| sonic_rs::from_str(&s).ok()).unwrap_or_default()
 }
 
 fn save_prefs(p: &Prefs) -> Result<(), String> {

@@ -12,6 +12,7 @@ name = "pdf-r2l-rs"
 path = "src/main.rs"
 
 [dependencies]
+sonic-rs = "0.3"
 pdf-r2l-core = { path = "../pdf-r2l-core" }
 eframe = "0.29"
 rfd = "0.15"

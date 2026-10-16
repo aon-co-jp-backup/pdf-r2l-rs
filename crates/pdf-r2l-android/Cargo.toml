@@ -12,6 +12,7 @@ name = "pdfr2l_jni"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+sonic-rs = "0.3"
 pdf-r2l-core = { path = "../pdf-r2l-core" }
 jni = "0.21"
 serde = { version = "1", features = ["derive"] }

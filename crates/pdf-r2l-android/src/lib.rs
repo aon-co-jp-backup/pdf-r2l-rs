@@ -37,7 +37,7 @@ fn get(slot: &Mutex<String>) -> String {
 
 /// 変換の本体(JNI から独立していて、試験できる)。
 pub fn convert_bytes(input: &[u8], prefs_json: &str, cache_dir: &str) -> Result<Vec<u8>, String> {
-    let prefs: Prefs = serde_json::from_str(prefs_json).map_err(|e| format!("invalid settings: {e}"))?;
+    let prefs: Prefs = sonic_rs::from_str(prefs_json).map_err(|e| format!("invalid settings: {e}"))?;
     let binding = match prefs.binding.as_str() {
         "l2r" => Binding::LeftToRight,
         "keep" => Binding::Keep,
