@@ -12,7 +12,7 @@ This program is an original implementation. Changing the binding direction is wr
 from the PDF specification (ISO 32000-1: 12.2 Viewer Preferences, 7.7.2 Document
 Catalog) and does not contain source code from other "pdf-r2l" projects.
 
-Copyright (c) 2026 aon-co-jp
+Copyright (c) 2026 石塚正浩（MASAHIRO ISHIZUKA）
 
 You may use this program under either of the following licenses, at your option:
   - MIT License
@@ -37,7 +37,7 @@ GUI アプリケーション(Windows / macOS / Linux / Android、インストー
 12.2 Viewer Preferences、7.7.2 Document Catalog)だけを根拠に書いており、他の「pdf-r2l」
 プロジェクトのソースコードを含みません。
 
-Copyright (c) 2026 aon-co-jp
+Copyright (c) 2026 石塚正浩（MASAHIRO ISHIZUKA）
 
 本プログラムは、次のいずれかのライセンスを選んで利用できます:
   - MIT ライセンス
@@ -56,7 +56,7 @@ https://github.com/aon-co-jp/pdf-r2l-rs で入手できます。
 The MIT License (MIT)
 ==============================================================================
 
-Copyright (c) 2026 aon-co-jp
+Copyright (c) 2026 石塚正浩（MASAHIRO ISHIZUKA）
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
