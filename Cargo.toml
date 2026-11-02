@@ -12,7 +12,7 @@ authors = ["石 塚 正 浩（MASAHIRO ISHIZUKA）"]
 [workspace.dependencies]
 # OCR・テキストフォント文字化・ページ描画の共有クレート(RPoem)。rev で固定する。
 open-runo-pdf-ocr = { git = "https://github.com/aon-co-jp/RPoem", rev = "e37de938e8c0fb756726ceac7a97e6bd8e813270" }
-lopdf = "0.34"
+lopdf = "0.42"
 open-runo-sr = { git = "https://github.com/aon-co-jp/RPoem", rev = "e37de938e8c0fb756726ceac7a97e6bd8e813270" }
 
 [profile.release]
