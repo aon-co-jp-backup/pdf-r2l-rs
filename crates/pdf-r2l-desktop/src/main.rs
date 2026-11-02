@@ -106,7 +106,7 @@ fn setup_fonts(ctx: &egui::Context) {
     for p in FONT_CANDIDATES {
         if let Ok(bytes) = std::fs::read(p) {
             let mut f = egui::FontDefinitions::default();
-            f.font_data.insert("jp".into(), egui::FontData::from_owned(bytes));
+            f.font_data.insert("jp".into(), std::sync::Arc::new(egui::FontData::from_owned(bytes)));
             for fam in [egui::FontFamily::Proportional, egui::FontFamily::Monospace] {
                 f.families.entry(fam).or_default().insert(0, "jp".into());
             }
@@ -481,11 +481,12 @@ impl App {
 }
 
 impl eframe::App for App {
-    fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, _: &mut eframe::Frame) {
+        let ctx = &ui.ctx().clone();
         let busy = self.running();
         if !busy {
             ctx.input(|i| {
-                let paths: Vec<PathBuf> = i.raw.dropped_files.iter().filter_map(|f| f.path.clone()).collect();
+                let paths: Vec<PathBuf> = i.raw.dropped_files.iter().map(|f| f.path().to_path_buf()).collect();
                 let pics: Vec<PathBuf> = paths.iter().filter(|p| is_image(p)).cloned().collect();
                 if let Some(pdf) = paths.iter().find(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("pdf"))) {
                     self.src = Some(pdf.clone());
@@ -505,7 +506,7 @@ impl eframe::App for App {
             });
         });
         // 変換ボタン・進捗・結果は、設定が長くスクロールしても常に見えるよう、画面下に固定する。
-        egui::TopBottomPanel::bottom("actions").show(ctx, |ui| {
+        egui::Panel::bottom("actions").show(ui, |ui| {
             ui.add_space(4.0);
             ui.horizontal(|ui| {
                 if self.prefs.tab_images {
@@ -564,7 +565,7 @@ impl eframe::App for App {
             }
             ui.add_space(4.0);
         });
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.heading("PDF R2L RS");
                 ui.add_enabled_ui(!busy, |ui| {
