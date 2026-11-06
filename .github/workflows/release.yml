@@ -21,6 +21,8 @@ jobs:
           name: windows
           path: dist/pdf-r2l-rs-setup.exe
   macos:
+    # macOS は実機が無く未検証のため、リリースの必須にはしない(失敗しても他を止めない)
+    continue-on-error: true
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
@@ -95,7 +97,7 @@ jobs:
           name: android
           path: dist/pdf-r2l-rs.apk
   release:
-    needs: [windows, macos, linux, android]
+    needs: [windows, linux, android]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-22.04
     steps:
@@ -106,4 +108,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" artifacts/*/* --repo "${GITHUB_REPOSITORY}" --title "pdf-r2l-rs ${GITHUB_REF_NAME}" --notes "PDF R2L RS: Windows (installer) / macOS (dmg, unsigned) / Linux (.deb, .tar.gz) / Android (.apk). 英日併記のライセンス(LICENSES.txt) / Licenses in English and Japanese."
+          # 手動で先にリリースを作ってある場合(タグ push と同時)は、作らずに添付だけする
+          if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" artifacts/*/* --repo "${GITHUB_REPOSITORY}" --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" artifacts/*/* --repo "${GITHUB_REPOSITORY}" --title "pdf-r2l-rs ${GITHUB_REF_NAME}" --notes "PDF R2L RS: Windows (installer) / macOS (dmg, unsigned) / Linux (.deb, .tar.gz) / Android (.apk). 英日併記のライセンス(LICENSES.txt) / Licenses in English and Japanese."
+          fi
