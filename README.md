@@ -1,5 +1,7 @@
 # pdf-r2l-rs
 
+
+> **インストーラー / Installer**: `installer/pdf-r2l-rs-setup.exe`(v1.3.1、CI ビルドと同一、SHA256 は Release の `.sha256`)と、そのソース `installer/pdf-r2l-rs.iss`(Inno Setup)。サイレントのインストール → 起動 → アンインストールで残りファイルが無いことを確認済み(2026-11-07)。 / `installer/pdf-r2l-rs-setup.exe` is the v1.3.1 installer (identical to the CI build) with its Inno Setup source `pdf-r2l-rs.iss`; a silent install → launch → uninstall left nothing behind (2026-11-07).
 PDFの**綴じ方向(右綴じ R2L / 左綴じ L2R)**を変更し、**見開き表示**にし、スキャンしたページを **OCR して元の書体に合わせた検索できる文字に置き換える**、
 Windows / macOS / Linux(・Android)用の GUI アプリです(インストーラー付き)。Rust 製。
 
