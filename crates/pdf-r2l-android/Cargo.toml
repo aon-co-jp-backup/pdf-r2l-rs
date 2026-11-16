@@ -19,7 +19,7 @@ serde_json = "1"
 
 # sonic-rs 0.3 は 32bit ARM(armeabi-v7a)でコンパイルできない(transmute のサイズ不一致)ため、64bit のときだけ使う
 [target.'cfg(target_pointer_width = "64")'.dependencies]
-sonic-rs = "0.3"
+sonic-rs = "0.5"
 
 [dev-dependencies]
 image = { version = "0.25", default-features = false, features = ["png"] }
