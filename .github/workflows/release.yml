@@ -23,7 +23,7 @@ jobs:
   macos:
     # macOS は実機が無く未検証のため、リリースの必須にはしない(失敗しても他を止めない)
     continue-on-error: true
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - name: Test and build (universal)
