@@ -1,6 +1,6 @@
 
 
-# PORTING / 引き継ぎ(pdf-r2l-rs)
+最新リリース: v1.3.1。 / Latest release: v1.3.1.
 
 最新リリース: v1.3.0。 / Latest release: v1.3.0.
 
@@ -174,3 +174,17 @@ On these tests, AI context completion **does no harm but adds nothing, and is sl
 
 ## aruaru-llm の Connect 移行への追従(2026-11-05)
 OCR の HTTP は RPoem の `open-runo-pdf-ocr` が持つ。Connect 化した版(RPoem ブランチ `aruaru-llm-connect-client`、`5a9c2fd`)へ `Cargo.toml` の rev を更新(`Ocr`・`OcrFill`・`OcrPropose`・`OcrGlyphRank`・`OcrScan`・`OcrPrepare`・`OcrLanguages`・`OcrCharset`。フォント配信 `/v1/ocr/fonts/:name` は例外)。`cargo check -p pdf-r2l-core` 成功。RPoem の main へのマージは未了(その後 rev を main のものへ)。aruaru-llm の main マージ・VPS 反映より前に配ると旧サーバーに届かない。
+
+## 2026-11-17 別アカウントでの再開用メモ / Resume memo for another account
+
+### 日本語
+**到達点**: 最新リリースは **v1.3.1**(aruaru-llm の Connect 移行に追従)。`installer/pdf-r2l-rs-setup.exe`(CI 版 19MB、ソースは `installer/pdf-r2l-rs.iss`)を追加し、サイレントのインストール→起動→アンインストールを確認済み(`5427bc7`)。その後 CI に Windows ARM64(実験)と macOS ランナー修正が入った(`9d31bbc`)。機能は v1.3.0 節のとおり(画像高解像度化 FHD〜16K・NEON、かすれ補正 89%、字形照合は `open-runo-glyph`)。
+**未了**: (1) AI 文脈補完は上積みが無く遅い=**実験的・既定オフのまま**(反復確定・ビーム探索・小モデル先行絞り込み・Qwen2.5-3B の分割 safetensors 対応が候補)、(2) Android のかすれ補正の速度を実機で再確認、(3) macOS / Linux / Windows ARM64 の実機確認、(4) RPoem の rev が main に載っているかの確認、(5) VPS の `aruaru-llm` には Qwen が無い(scan/fill は 503 が正常。補完は手元 PC の aruaru-llm)。リリースごとに Windows exe を作り、Release と VPS の版を揃える(運用ルール)。
+**注意**: 書き換え済みリポジトリで `git pull` しない(`git fetch` 後に確認)。Windows の bash から日本語を `curl` に直接渡さない(Python から UTF-8)。環境変数は `export` してから起動。秘密は `F:\` 直下の txt から、値は出さない。作者名は本名で統一。
+**再開用メッセージ(別アカウントに貼り付け)**: 「再開するリポジトリは `F:\pdf-r2l-rs`(aon-co-jp/pdf-r2l-rs)、`F:\RPoem`(`open-runo-pdf-ocr`・`open-runo-sr`・`open-runo-glyph`)、`F:\aruaru-llm`、`F:\open-cuda`、`F:\runo`。まず各リポジトリで `git fetch` して状態を確認し、`pdf-r2l-rs/PORTING.md` 末尾と v1.3.0 節を読む。次に、Android 実機でかすれ補正を確認(`adb reverse tcp:4600 tcp:14600`、SSH 中継 `-L 14600:127.0.0.1:4600 -L 14610:127.0.0.1:4610 conoha`)、AI 文脈補完の改善案(反復確定・ビーム探索)を実測、macOS/Linux 実機確認、の順で進める。開発→TEST→DEBUG→改善を繰り返し、完成したら README/CLAUDE/PORTING を日英で更新して commit・push・リリース(Windows exe 付き)・VPS 反映。」
+
+### English
+**Status**: latest release **v1.3.1** (follows aruaru-llm's Connect migration). `installer/pdf-r2l-rs-setup.exe` (CI build, 19 MB; source `installer/pdf-r2l-rs.iss`) was added and a silent install → launch → uninstall was verified (`5427bc7`). CI later gained an experimental Windows ARM64 job and a macOS runner fix (`9d31bbc`). Features are as in the v1.3.0 section (image up-conversion FHD..16K with NEON, faded-text rescue 89%, glyph matching in `open-runo-glyph`).
+**Open**: (1) AI context completion adds nothing and is slow — **stays experimental and off by default** (ideas: iterative confirmation, beam search, small-model pre-filter, sharded-safetensors support for Qwen2.5-3B); (2) re-check faded-text rescue speed on a real Android phone; (3) real-machine checks on macOS / Linux / Windows ARM64; (4) confirm the RPoem rev used is on main; (5) the VPS `aruaru-llm` has no Qwen (503 for scan/fill is expected; run completion on your own PC). Every release gets a Windows exe and the Release and VPS versions are aligned (standing rule).
+**Cautions**: never `git pull` in rewritten repositories (`git fetch` and inspect first). Do not pass Japanese to `curl` from Windows bash (send from Python as UTF-8). `export` env vars before launching. Secrets come from txt files at the root of `F:\`; never print them. Author name = real name.
+**Resume message (paste into the other account)**: "Repositories to resume: `F:\pdf-r2l-rs` (aon-co-jp/pdf-r2l-rs), `F:\RPoem` (`open-runo-pdf-ocr`, `open-runo-sr`, `open-runo-glyph`), `F:\aruaru-llm`, `F:\open-cuda`, `F:\runo`. `git fetch` each first and check state; read the end of `pdf-r2l-rs/PORTING.md` and the v1.3.0 section. Then: check faded-text rescue on a real Android phone (`adb reverse tcp:4600 tcp:14600`, SSH forward `-L 14600:127.0.0.1:4600 -L 14610:127.0.0.1:4610 conoha`), measure completion improvements (iterative confirmation, beam search), and check real macOS/Linux machines. Iterate develop → TEST → DEBUG → improve; when done update README/CLAUDE/PORTING in Japanese and English, commit, push, release (with a Windows exe) and deploy to the VPS."

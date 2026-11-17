@@ -254,3 +254,6 @@ On these tests, AI context completion **does no harm but adds nothing, and is sl
 
 ## aruaru-llm の Connect 移行への追従(2026-11-05)
 OCR の HTTP は RPoem の `open-runo-pdf-ocr` が持つ。Connect 化した版(RPoem ブランチ `aruaru-llm-connect-client`、`5a9c2fd`)へ `Cargo.toml` の rev を更新(`Ocr`・`OcrFill`・`OcrPropose`・`OcrGlyphRank`・`OcrScan`・`OcrPrepare`・`OcrLanguages`・`OcrCharset`。フォント配信 `/v1/ocr/fonts/:name` は例外)。`cargo check -p pdf-r2l-core` 成功。RPoem の main へのマージは未了(その後 rev を main のものへ)。aruaru-llm の main マージ・VPS 反映より前に配ると旧サーバーに届かない。
+
+## 2026-11-17 再開用メモ / Resume memo
+最新 v1.3.1。再開用メッセージ・未了・注意は [`PORTING.md`](PORTING.md) 末尾「2026-11-17 別アカウントでの再開用メモ」(日英)。*Latest v1.3.1; resume message, open items and cautions are at the end of PORTING.md (JA/EN).*
