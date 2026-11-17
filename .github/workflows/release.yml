@@ -20,6 +20,23 @@ jobs:
         with:
           name: windows
           path: dist/pdf-r2l-rs-setup.exe
+  windows-arm:
+    # Windows ARM64(Snapdragon)。実機が無いためCI上のビルドとテストのみ。必須にはしない
+    runs-on: windows-11-arm
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test and build
+        run: |
+          cargo test --release -p pdf-r2l-core
+          cargo build --release -p pdf-r2l-desktop -p pdf-r2l-cli
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-arm64
+          path: |
+            target/release/pdf-r2l-cli.exe
+            target/release/pdf-r2l-rs.exe
+          if-no-files-found: warn
   macos:
     # macOS は実機が無く未検証のため、リリースの必須にはしない(失敗しても他を止めない)
     continue-on-error: true
