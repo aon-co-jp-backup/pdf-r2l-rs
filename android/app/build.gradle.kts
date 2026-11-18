@@ -12,7 +12,7 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 8
-        versionName = "1.3.1"
+        versionName = "1.3.2"
     }
 
     // 署名鍵は環境変数からのみ受け取る(keystoreも秘密もコミットしない)。揃っていなければ署名なしのreleaseになる。
