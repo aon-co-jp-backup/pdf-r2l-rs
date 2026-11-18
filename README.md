@@ -265,3 +265,8 @@ OCR の HTTP は RPoem の `open-runo-pdf-ocr` が持つ。Connect 化した版(
 **2026-11-18 追記 / Update**: `Cargo.toml` の `open-runo-pdf-ocr`・`open-runo-sr` の rev を RPoem `64356b4`(フォント修正 `345149a` を含む main)へ更新、`cargo check -p pdf-r2l-core` 成功。新版リリースと実フォント取得の通し確認は未了。 / Bumped the `open-runo-pdf-ocr` and `open-runo-sr` revs to RPoem `64356b4` (main, includes the font fix `345149a`); `cargo check -p pdf-r2l-core` passes. A new release and an end-to-end font fetch are still open.
 
 **2026-11-18 追記 / Update**: 実フォント取得で、`OcrFont` の応答(約13MB)が ureq 3 の既定上限10MBを超えて失敗することを発見し、RPoem `bb3af78` で上限を引き上げ、rev を更新。本番の aruaru-llm から `NotoSansJP-VF.ttf`(9.59MB、sha256照合つき)の取得に成功。v1.3.2 としてリリース。 / A real font fetch revealed that the ~13 MB `OcrFont` response exceeded ureq 3 default 10 MB limit; fixed in RPoem `bb3af78` and the rev bumped. `NotoSansJP-VF.ttf` (9.59 MB, sha256-verified) was fetched from production aruaru-llm. Released as v1.3.2.
+
+
+## 2026-11-18 別アカウントでの再開用メモ / Resume memo
+**日本語**: aruaru-llm呼び出しはConnect化済み(RPoem `open-runo-pdf-ocr`、フォント取得は`OcrFont`、応答上限256MB=RPoem `bb3af78`)。v1.3.2公開済み(exe・setup・deb・tar.gz・apk、macOSなし)。古いクライアント(v1.3.1以前)は新サーバーからフォントを取得できない。未了=他OS成果物の確認。**スマホ試験は中止中**。
+**English**: aruaru-llm calls are on Connect (RPoem `open-runo-pdf-ocr`; fonts via `OcrFont`, 256 MB response limit in RPoem `bb3af78`). v1.3.2 is released (exe, setup, deb, tar.gz, apk; no macOS). Clients v1.3.1 and older cannot fetch fonts from the new server. Open: other-OS artifact checks. **Phone testing is stopped.**
