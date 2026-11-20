@@ -1,0 +1,199 @@
+
+
+# pdf-r2l-rs(開発ルール・引き継ぎ) / Development rules & handoff
+
+- 共通ルール(UI・インストーラーの試験、日本語での応答、ライセンスの扱い)は `F:\runo\CLAUDE.md` と `open-raid-z/CLAUDE.md` に従う。 / Common rules live in `F:\runo\CLAUDE.md` and `open-raid-z/CLAUDE.md`.
+- GUI・Android を変えたら `docs/UI-TEST-CHECKLIST.md` と `scripts/ui-test/` で、複数の解像度・縦横・実機で確認する(スマホ実機は USB 接続のものを使える)。 / After UI changes, run the checklist and scripts across resolutions/orientations/real devices.
+- 共有ロジックは RPoem(`open-runo-pdf-ocr` / `open-runo-sr` / `open-runo-glyph`)、サーバーは `aruaru-llm`、推論エンジンは `open-cuda`。`Cargo.toml` の RPoem は `rev` で固定する。 / Shared logic is in RPoem, the server is `aruaru-llm`, the engine is `open-cuda`; pin the RPoem `rev`.
+- **AI 文脈補完は実験的・既定オフ**(測定では害はないが上積みも無く遅い)。通し測定せずにオンにしたり、成果として報告したりしない。 / AI context completion is experimental and off by default (no harm but no gain, and slow, in measurements); never enable it or report it as a win without end-to-end measurements.
+
+## v1.3.0(2026-10-10): かすれ補正・字形照合・AI文脈補完の拡張 / v1.3.0: faded-text rescue, glyph matching, extended AI context completion
+
+### 日本語
+**v1.3.0 の内容(既定の動作)**
+- **コントラスト自動補正(常にオン)**: 薄い・かすれた文書は、背景とインクの差が小さいために「白紙」と判定され、OCR にも送られなかった。濃淡を引き伸ばしてから OCR へ送る(十分に濃いページには触れない)。合成のかすれ文書で正解率 **0% → 約 48%**。
+- **かすれ補正(設定 `reocr`、既定オフ)**: 自信の低い行を切り出し → ノイズ除去 → AI 超解像(`open-runo-sr`)と補間の 2 通りで 3 倍に拡大 → 再 OCR し、信頼度の高いほうを採用。同じ文書で **約 48% → 89%**。AI 超解像は、ノイズを先に除かないと字がブロック状に崩れることを実測で確認したため、必ず軽いぼかしの後に行う。
+- **AI 文脈補完(設定 `fill`、既定オフ・実験的)**: 言語モデル(Qwen2.5)が各行を走査して不自然な 1〜4 文字を検出 → 形の似た字・字形の照合・検索結果(`aruaru-search`)・言語モデルから候補を作り、文脈つきで採点して置換。連続した複数文字の置換は、複数の単語を 1 つに結合して反映する。字形の証拠が強いときは、字形が元の読みより明らかに悪い候補は採らない(精度優先)。
+- **字形の照合**(新設の共有クレート `open-runo-glyph`): かすれた升目と候補の字形(明朝・ゴシック)を正規化相互相関で比較。升目の中で字形をずらす全位置を **1 回の行列積**にして、サーバーの `POST /v1/ocr/glyph-rank` では `open-cuda` の `sgemm`(CPU は `open-cpu` の AVX2)で実行する(約 9,200 字形 × 289 位置で **1 升約 14 ms**)。サーバーが対応していなければ、アプリ内の CPU 参照実装に自動で切り替わる(スマホでフォントを取得せずに済むよう、サーバー優先)。
+- **`open-cuda` の Qwen**: バッチ prefill、`score_continuations`(候補の対数尤度)、`top_next_tokens`、`token_logprobs`、語彙ロジットの `sgemm` 化(1 トークンずつの結果・スレッド版と数値一致を試験で確認)。
+- 画面: 「かすれ補正」「AI 文脈補完」(字形・検索・サーバー URL・最大箇所数)の設定を、デスクトップと Android に追加。結果表示に「読み直した行数」「補完した箇所数」を追加。
+
+**測定結果(正直な記録)**: 合成の「かすれ文書」(小さく・薄く・ぼけ・ノイズ。正解が分かる 159 文字)。
+
+| 条件 | 文字の正解率 | 時間 |
+|---|---|---|
+| 以前(白紙と判定され OCR されず) | 0% | – |
+| コントラスト自動補正のみ | 約 48% | 数秒 |
+| + かすれ補正 | 89.3% | 約 20 秒 |
+| + AI 文脈補完(精度優先版・Qwen2.5-1.5B・CPU) | 89.3% | 約 220 秒 |
+| 軽いかすれ文書(補正前から 98.7%)に補完を適用 | 98.7%(悪化なし) | 約 100 秒 |
+
+AI 文脈補完は、**これらの試験では害はないが上積みも無く、遅い**(1 か所あたり 10〜20 秒。計算量は言語モデルの大きさ × 候補数 × トークン数で決まる)。途中の版(連続文字・検索を無制限に使う版)は 87%(880 秒)と**悪化**したため、候補数・後ろ文脈・検索の対象を絞って精度優先に作り直した。完全に消えた字は文脈からの推測にとどまり、誤ることがある(例:「今□は」を「今朝は」)。よって**既定オフ・実験的**のままとする。
+
+**サーバー(aruaru-llm)の追加 API**: `POST /v1/ocr/scan`(不自然な箇所の検出)、`POST /v1/ocr/propose`(1 文字候補の提案)、`POST /v1/ocr/fill`(候補の採点・置換。`return_all` / `use_web` / `lm_candidates`)、`GET /v1/ocr/charset?n=`(頻出の漢字・かな)、`POST /v1/ocr/glyph-rank`(字形の照合、sgemm)。言語モデル(`/v1/qwen/install` → `/v1/qwen/select`)が必要(無いとき 503。`glyph-rank` は文書内の字だけでも動く)。検索は `ARUARU_LLM_SEARCH_URL`(既定 `http://127.0.0.1:4610` = `aruaru-search`、VPS 内からは回数制限なし。ローカルで試すときは SSH 中継 `-L 14610:127.0.0.1:4610`)。補完は手元 PC の `aruaru-llm` に任せるのが現実的(VPS は 4 コア・RAM 3.6GB)ため、設定 `fill_server_url` で OCR と別のサーバーを指定できる。
+
+**試験のやり方**: 試験画像は Python(Pillow)で作った小さく薄くぼかしたかすれ文書(正解が分かる)。`RPoem/crates/open-runo-pdf-ocr/examples/e2e.rs`(`PDFOCR_REOCR=1 PDFOCR_FILL_WEB=0 PDFOCR_DEBUG=1 cargo run --release -p open-runo-pdf-ocr --example e2e -- in.pdf out.pdf <OCRサーバーURL> jpn+eng best 8 <補完サーバーURL>`)で OCR → 補完 → PDF を作り、`pdftotext` の結果を正解と比べる。`examples/vis_probe.rs` は字形の照合だけを、位置が既知の文書で測る(`JITTER=0.3` で位置ずれを与える。位置が既知なら 90 字種中の正解を 70〜91% で 1 位にできるが、ずれると下がる)。速度の測定: `cargo test --release --bin aruaru-llm bench_sgemm -- --ignored --nocapture`(aruaru-llm)。OCR は VPS の `aruaru-llm`(SSH 中継 `-L 14600:127.0.0.1:4600`)、補完は手元の `aruaru-llm`(Qwen2.5-1.5B)。Windows の bash から日本語を `curl` に直接渡すと文字化けするので、Python から UTF-8 で送る。環境変数は `export` してから起動する(サブシェルでの前置きが効かないことがあった)。
+
+**未了・次にやること**: (1) 重く劣化したページで補完が効く条件の探索(修正を 1 か所ずつ確定して文脈を更新する反復、字形の確率 + 言語モデルの確率を合わせるビーム探索)、(2) 升目の位置の精度(行の枠からの按分はずれる)、(3) 補完の速度(小さい言語モデルでの先行絞り込み → 大きいモデルで確定、GPU の `sgemm`)、(4) 日本語向けのより大きいモデル(Qwen2.5-3B は分割 safetensors のため `QwenModel::load` の対応が要る)、(5) Android のかすれ補正の速度(実機で AI 超解像は 480×320 → FHD で約 51 秒)、(6) macOS / Linux 実機での確認。
+
+### English
+**What v1.3.0 contains (default behaviour)**
+- **Automatic contrast correction (always on)**: faint or faded documents have so little difference between background and ink that they were classified as "blank" and never sent to OCR. The page is now stretched before OCR (pages with enough contrast are untouched). Character accuracy on the synthetic faded document: **0% → ~48%**.
+- **Faded-text rescue (setting `reocr`, off by default)**: crop low-confidence lines → denoise → enlarge 3x with two readings (AI super-resolution `open-runo-sr` and interpolation) → OCR again and keep the more confident reading. On the same document **~48% → 89%**. AI super-resolution breaks glyphs into blocks unless the noise is removed first (measured), so a light blur always comes first.
+- **AI context completion (setting `fill`, off by default, experimental)**: a language model (Qwen2.5) scans each line and flags unnatural 1–4 character spans → candidates from a look-alike table, glyph matching, search results (`aruaru-search`) and the model itself, scored in context and replaced. A replacement across several words merges them into one. When glyph evidence is strong, a candidate that is visually clearly worse than the original reading is never taken (precision first).
+- **Glyph matching** (new shared crate `open-runo-glyph`): a faded cell is compared with candidate glyphs (serif and sans) by normalized cross-correlation. All positions of the glyph inside the cell become **one matrix product**, executed in the server's `POST /v1/ocr/glyph-rank` by `open-cuda`'s `sgemm` (CPU: `open-cpu` AVX2) — **~14 ms per cell** for ~9,200 glyphs × 289 positions. If the server does not support it the app falls back to the CPU reference (server first, so phones need not fetch fonts).
+- **Qwen in `open-cuda`**: batched prefill, `score_continuations` (candidate log-likelihood), `top_next_tokens`, `token_logprobs`, and the vocabulary logits via `sgemm` (verified numerically identical to token-by-token decoding and to the threaded version).
+- UI: "Faded-text rescue" and "AI context completion" settings (glyphs, search, server URL, max spots) on desktop and Android; the result message now reports re-read lines and completed spots.
+
+**Measurements (honest record)**: a synthetic faded document (small, faint, blurred, noisy; 159 characters with known truth).
+
+| Condition | Character accuracy | Time |
+|---|---|---|
+| Before (classified as blank, never OCR'd) | 0% | – |
+| Automatic contrast correction only | ~48% | seconds |
+| + faded-text rescue | 89.3% | ~20 s |
+| + AI context completion (precision-first, Qwen2.5-1.5B, CPU) | 89.3% | ~220 s |
+| Mildly faded document (98.7% already) with completion | 98.7% (no harm) | ~100 s |
+
+On these tests, AI context completion **does no harm but adds nothing, and is slow** (10–20 s per spot; cost = model size × candidates × tokens). An intermediate version (multi-character spans plus unrestricted search) scored 87% in 880 s, i.e. **worse**, so the candidate count, the following context and the search targets were cut and the logic reworked for precision. A fully erased character remains a guess from context and can be wrong (e.g. "今□は" filled as "今朝は"). It therefore stays **off by default and experimental**.
+
+**New server APIs (aruaru-llm)**: `POST /v1/ocr/scan` (detect unnatural spans), `POST /v1/ocr/propose` (single-character candidates), `POST /v1/ocr/fill` (score and replace; `return_all` / `use_web` / `lm_candidates`), `GET /v1/ocr/charset?n=` (frequent kanji/kana), `POST /v1/ocr/glyph-rank` (glyph matching via sgemm). They need a language model (`/v1/qwen/install` then `/v1/qwen/select`; 503 without one — `glyph-rank` works with just the characters found in the document). Search goes through `ARUARU_LLM_SEARCH_URL` (default `http://127.0.0.1:4610` = `aruaru-search`, unlimited from inside the VPS; for local tests use an SSH forward `-L 14610:127.0.0.1:4610`). Completion is realistically run on your own PC's `aruaru-llm` (the VPS has 4 cores / 3.6 GB RAM), so `fill_server_url` can point it at a different server than OCR.
+
+**How it was tested**: the test images are small, faint, blurred documents made with Python (Pillow) so the truth is known. `RPoem/crates/open-runo-pdf-ocr/examples/e2e.rs` (`PDFOCR_REOCR=1 PDFOCR_FILL_WEB=0 PDFOCR_DEBUG=1 cargo run --release -p open-runo-pdf-ocr --example e2e -- in.pdf out.pdf <OCR server URL> jpn+eng best 8 <completion server URL>`) runs OCR → completion → PDF and the `pdftotext` result is compared with the truth. `examples/vis_probe.rs` measures glyph matching alone on a document with known positions (`JITTER=0.3` adds drift; with known positions the true character ranks first 70–91% of the time among 90 glyphs, lower when positions drift). Speed: `cargo test --release --bin aruaru-llm bench_sgemm -- --ignored --nocapture` (aruaru-llm). OCR used the VPS `aruaru-llm` (SSH forward `-L 14600:127.0.0.1:4600`), completion a local `aruaru-llm` (Qwen2.5-1.5B). Passing Japanese text to `curl` from Windows bash is garbled — send it from Python as UTF-8. `export` environment variables before launching (a sub-shell prefix sometimes did not take effect).
+
+**Open items**: (1) find the conditions under which completion helps on heavily degraded pages (confirm one fix at a time and update the context; beam search combining glyph likelihood with language-model probability), (2) cell localization accuracy (apportioning the line box drifts), (3) completion speed (pre-filter with a small model, confirm with a larger one; GPU `sgemm`), (4) a larger Japanese-capable model (Qwen2.5-3B is sharded safetensors, which `QwenModel::load` does not support yet), (5) faded-text rescue speed on Android (on a real phone AI super-resolution takes ~51 s for 480×320 → FHD), (6) checks on real macOS / Linux machines.
+
+## API 方針: REST 全廃・gRPC / Connect へ (2026-11-04)
+
+### 日本語
+- **REST は全廃する。新しい API は REST で作らない。** ブラウザや `curl` から呼ぶ API は **Connect の単純呼び出し**(`POST /<パッケージ>.<Service>/<Method>`、`content-type: application/json`、本文は JSON)、サービス間は **gRPC / gRPC-web**(RPoem の管理API `open_runo.admin.v1.Admin` と同じ流儀)。ストリーミングは、必要になってから。
+- **既存の REST は、触るときに順に移す。** 移したら旧 REST の経路は消す。移行が終わるまで残るが、**新規には追加しない**。
+- **JSON は RS-JSON に統一**する(読み込みは `from_str_secure` / `parse_secure` でサイズ・深さ・重複キーの上限つき、書き出しは `rust_json::fast`)。ブラウザの WASM に `prost` は入れない(サイズが増えるため)。
+- **例外(自分たちの API ではなく、相手の規格が決めているもの)**: ACME、OAuth/OIDC のコールバック、第三者(GitHub など)からの Webhook、ヘルスチェック、静的ファイル配信、OTLP など。これらは規格どおりの HTTP を受ける。
+- 参考実装: `RPoem`(`open_runo.admin.v1.Admin`)、`open-easy-web`(`server/src/connect.rs`、`proto/open_easy_web/admin/v1/admin.proto`)。
+- ※ このリポジトリのコードが既に方針どおりかどうかは、各リポジトリの現状による。この節は方針の記録であり、コードの変更を意味しない。
+
+### English
+- **REST is being abolished. New APIs are not built as REST.** APIs called from browsers or `curl` use **Connect unary calls** (`POST /<package>.<Service>/<Method>`, `content-type: application/json`, JSON body); service-to-service calls use **gRPC / gRPC-web** (the same style as RPoem's admin API `open_runo.admin.v1.Admin`). Streaming only when it is actually needed.
+- **Existing REST endpoints are migrated one by one, when they are touched.** The old REST route is removed once migrated. Until migration is finished they remain, but **no new ones are added**.
+- **JSON is unified on RS-JSON**: reading with `from_str_secure` / `parse_secure` (size, depth and duplicate-key limits), writing with `rust_json::fast`. `prost` is not put into browser WASM (it would grow the binary).
+- **Exceptions (shapes dictated by someone else's standard, not our own API)**: ACME, OAuth/OIDC callbacks, webhooks from third parties (e.g. GitHub), health checks, static file serving, OTLP, and so on. These accept plain HTTP as the standard requires.
+- Reference implementations: `RPoem` (`open_runo.admin.v1.Admin`) and `open-easy-web` (`server/src/connect.rs`, `proto/open_easy_web/admin/v1/admin.proto`).
+- Note: whether the code in a given repository already follows this policy depends on that repository. This section records the policy; it does not mean the code has been changed.
+
+### Deutsch (KI-Übersetzung, redaktionell überarbeitet; noch nicht von Muttersprachlern geprüft)
+- **REST wird vollständig abgeschafft; neue APIs entstehen nicht mehr als REST.** APIs, die aus dem Browser oder per `curl` aufgerufen werden, verwenden **unäre Connect-Aufrufe** (`POST /<Paket>.<Service>/<Methode>`, `content-type: application/json`, JSON-Body). Zwischen Diensten kommen **gRPC bzw. gRPC-web** zum Einsatz, im selben Stil wie die Admin-API von RPoem (`open_runo.admin.v1.Admin`). Streaming wird erst ergänzt, wenn es tatsächlich gebraucht wird.
+- **Bestehende REST-Endpunkte werden schrittweise umgestellt, und zwar immer dann, wenn man ohnehin an ihnen arbeitet.** Sobald ein Endpunkt umgestellt ist, wird die alte REST-Route entfernt. Bis zum Abschluss der Migration bleiben die übrigen bestehen, es werden aber **keine neuen mehr hinzugefügt**.
+- **JSON wird einheitlich über RS-JSON verarbeitet**: Gelesen wird mit `from_str_secure` bzw. `parse_secure` (mit Obergrenzen für Größe, Verschachtelungstiefe und doppelte Schlüssel), geschrieben mit `rust_json::fast`. `prost` wird nicht in das Browser-WASM aufgenommen, da es die Datei vergrößern würde.
+- **Ausnahmen (Schnittstellen, deren Form ein fremder Standard vorgibt und die nicht zu unserer eigenen API gehören)**: ACME, OAuth/OIDC-Callbacks, Webhooks von Drittanbietern (z. B. GitHub), Health-Checks, die Auslieferung statischer Dateien, OTLP und Ähnliches. Diese nehmen, wie vom jeweiligen Standard verlangt, gewöhnliches HTTP entgegen.
+- Referenzimplementierungen: `RPoem` (`open_runo.admin.v1.Admin`) und `open-easy-web` (`server/src/connect.rs`, `proto/open_easy_web/admin/v1/admin.proto`).
+- Hinweis: Ob der Code eines einzelnen Repositorys diese Richtlinie bereits erfüllt, hängt vom jeweiligen Repository ab. Dieser Abschnitt dokumentiert lediglich die Richtlinie; er besagt nicht, dass der Code schon angepasst wurde.
+
+### Русский (перевод выполнен с помощью ИИ и отредактирован; носителями языка пока не проверен)
+- **От REST мы полностью отказываемся; новые API больше не создаются в стиле REST.** API, к которым обращаются из браузера или через `curl`, используют **унарные вызовы Connect** (`POST /<пакет>.<Service>/<Method>`, `content-type: application/json`, тело запроса — JSON). Для взаимодействия между сервисами применяются **gRPC и gRPC-web** — в том же стиле, что и административный API RPoem (`open_runo.admin.v1.Admin`). Потоковая передача данных добавляется лишь тогда, когда в ней действительно возникает необходимость.
+- **Существующие REST-эндпоинты переводятся поэтапно — по мере того, как с ними приходится работать.** После перевода старый REST-маршрут удаляется. Пока миграция не завершена, оставшиеся эндпоинты сохраняются, но **новые не добавляются**.
+- **Работа с JSON унифицирована на основе RS-JSON**: чтение — через `from_str_secure` или `parse_secure` (с ограничениями на размер, глубину вложенности и повторяющиеся ключи), запись — через `rust_json::fast`. `prost` в браузерный WASM не включается, поскольку это увеличило бы размер файла.
+- **Исключения (интерфейсы, форму которых определяет чужой стандарт, а не наш собственный API)**: ACME, обратные вызовы OAuth/OIDC, вебхуки сторонних сервисов (например, GitHub), проверки работоспособности, раздача статических файлов, OTLP и тому подобное. Такие интерфейсы принимают обычный HTTP, как того требует соответствующий стандарт.
+- Эталонные реализации: `RPoem` (`open_runo.admin.v1.Admin`) и `open-easy-web` (`server/src/connect.rs`, `proto/open_easy_web/admin/v1/admin.proto`).
+- Примечание: соответствует ли код конкретного репозитория этой политике, зависит от самого репозитория. Данный раздел лишь фиксирует политику и не означает, что код уже изменён.
+
+## API 方針の補足: 用語の整理と使い分け (2026-11-04)
+
+### 日本語
+**1つに統一するものではなく、別の層の話です。** 「REST の代わり」になるのは Connect・gRPC・GraphQL だけで、WASM は画面を作る技術です。
+
+| 用語 | 何か | REST の代わりか |
+|---|---|---|
+| REST | URL と HTTP メソッドで操作を表す API の作り方 | 全廃する側 |
+| **Connect** | `POST /サービス名/メソッド名` に JSON を送る形式。`curl` でもブラウザの `fetch` でも呼べる | はい(**採用**) |
+| **gRPC** | 同じ「サービス/メソッド」の考え方を、バイナリ(protobuf)と HTTP/2 で行う形式。速く、ストリーミングも得意 | はい(**サービス同士に採用**) |
+| gRPC-web | gRPC のブラウザ向けの変形版 | はい(必要なら) |
+| GraphQL | 欲しい項目を問い合わせる形式 | 一部だけ(**問い合わせ(読み取り)専用**) |
+| WASM | Rust をブラウザの中で動かす仕組み | いいえ(画面を作る技術) |
+
+- **ブラウザの画面や `curl` から呼ぶ API は Connect**(POST、JSON を RS-JSON で読み書き)。ブラウザの WASM は素の gRPC を話せず、Connect なら `fetch` のままで、`prost` を足さずに済む(画面のサイズも増えない)。
+- **サービス同士の通信(サーバー間、重い処理、ストリーミング)は gRPC。** 多くは Connect で足りるので、ストリーミングが必要になった所だけ gRPC に上げる。
+- **GraphQL は、まとめて問い合わせたいときの読み取り専用。** 書き込み(操作)には使わない。
+- **WASM は画面を作る技術として、そのまま使う。** 画面から呼ぶ API が Connect になっただけ。
+- 外部の規格が形を決めるもの(ACME、OAuth のコールバック、第三者の Webhook、ヘルスチェック、静的ファイル、OTLP)は、規格どおりの HTTP のまま。
+- **迷ったら Connect。**
+
+### English
+**These are not alternatives to unify; they sit at different layers.** Only Connect, gRPC and GraphQL can replace REST; WASM is a way to build the UI.
+
+| Term | What it is | Replaces REST? |
+|---|---|---|
+| REST | API style that expresses operations through URLs and HTTP methods | The thing being abolished |
+| **Connect** | `POST /Service/Method` with a JSON body; callable from `curl` and from a browser `fetch` | Yes (**adopted**) |
+| **gRPC** | The same service/method idea over binary (protobuf) and HTTP/2; fast, good at streaming | Yes (**for service-to-service**) |
+| gRPC-web | A browser-friendly variant of gRPC | Yes (if needed) |
+| GraphQL | A query language: ask for exactly the fields you want | Partly (**read-only queries**) |
+| WASM | Runs Rust inside the browser | No (a UI technology) |
+
+- **APIs called from browser screens or `curl` use Connect** (POST, JSON read and written with RS-JSON). Browser WASM cannot speak plain gRPC; with Connect it stays a `fetch`, and `prost` is not needed (the binary does not grow).
+- **Service-to-service calls (server to server, heavy work, streaming) use gRPC.** Connect is enough in most places; move a call to gRPC only where streaming is actually needed.
+- **GraphQL is read-only**, for queries that gather several pieces of data. It is not used for writes (operations).
+- **WASM stays as the way to build the UI.** The API it calls simply became Connect.
+- Interfaces whose shape an outside standard dictates (ACME, OAuth callbacks, third-party webhooks, health checks, static files, OTLP) stay plain HTTP.
+- **When in doubt, use Connect.**
+
+### Deutsch (KI-Übersetzung, sprachlich überarbeitet; noch nicht von Muttersprachlern geprüft)
+**Es geht nicht darum, eine einzige Technik auszuwählen – die Begriffe liegen auf unterschiedlichen Ebenen.** Als Ersatz für REST kommen nur Connect, gRPC und GraphQL in Frage; WASM dagegen ist eine Technik, mit der die Benutzeroberfläche gebaut wird.
+
+| Begriff | Was ist das? | Ersatz für REST? |
+|---|---|---|
+| REST | Ein API-Stil, bei dem Operationen über URLs und HTTP-Methoden ausgedrückt werden | wird abgeschafft |
+| **Connect** | `POST /Dienst/Methode` mit JSON im Body; aufrufbar mit `curl` ebenso wie mit `fetch` im Browser | ja (**gewählt**) |
+| **gRPC** | Dasselbe Prinzip aus Dienst und Methode, aber über binäres protobuf und HTTP/2; schnell und gut für Streaming geeignet | ja (**zwischen Diensten**) |
+| gRPC-web | Eine für den Browser angepasste Variante von gRPC | ja (bei Bedarf) |
+| GraphQL | Abfragesprache, mit der man genau die benötigten Felder anfordert | teilweise (**nur für lesende Abfragen**) |
+| WASM | Führt Rust-Code direkt im Browser aus | nein (Technik für die Oberfläche) |
+
+- **APIs, die von Browseroberflächen oder per `curl` aufgerufen werden, verwenden Connect** (POST; JSON wird mit RS-JSON gelesen und geschrieben). WASM im Browser kann kein reines gRPC sprechen. Mit Connect bleibt es bei einem gewöhnlichen `fetch`, und `prost` ist nicht nötig – die WASM-Datei wird dadurch nicht größer.
+- **Für die Kommunikation zwischen Diensten (Server zu Server, rechenintensive Aufgaben, Streaming) wird gRPC eingesetzt.** In den meisten Fällen reicht Connect aus; auf gRPC wird nur dort umgestellt, wo Streaming tatsächlich gebraucht wird.
+- **GraphQL dient ausschließlich lesenden Abfragen**, wenn mehrere Informationen gebündelt abgefragt werden sollen. Für Schreibzugriffe (Operationen) wird es nicht verwendet.
+- **WASM bleibt die Technik für die Oberfläche.** Geändert hat sich lediglich, dass die aufgerufene API nun auf Connect beruht.
+- Schnittstellen, deren Form durch einen externen Standard festgelegt ist (ACME, OAuth-Callbacks, Webhooks von Drittanbietern, Health-Checks, statische Dateien, OTLP), bleiben gewöhnliches HTTP.
+- **Im Zweifel: Connect.**
+
+### Русский (перевод выполнен с помощью ИИ и литературно отредактирован; носителями языка пока не проверен)
+**Это не варианты, из которых нужно выбрать один, а технологии разных уровней.** Заменить REST могут только Connect, gRPC и GraphQL; WASM же — это способ создания пользовательского интерфейса.
+
+| Термин | Что это | Заменяет REST? |
+|---|---|---|
+| REST | Стиль построения API, при котором операции выражаются через URL и HTTP-методы | отменяется |
+| **Connect** | `POST /Сервис/Метод` с телом в формате JSON; вызывается как из `curl`, так и из браузерного `fetch` | да (**выбран**) |
+| **gRPC** | Тот же принцип «сервис — метод», но поверх двоичного формата protobuf и HTTP/2; работает быстро и хорошо подходит для потоковой передачи | да (**для связи между сервисами**) |
+| gRPC-web | Адаптированный для браузера вариант gRPC | да (при необходимости) |
+| GraphQL | Язык запросов: клиент запрашивает ровно те поля, которые ему нужны | частично (**только запросы на чтение**) |
+| WASM | Позволяет выполнять код на Rust прямо в браузере | нет (технология для интерфейса) |
+
+- **API, которые вызываются из браузерных интерфейсов или через `curl`, строятся на Connect** (POST; JSON читается и записывается через RS-JSON). Браузерный WASM не умеет работать с «чистым» gRPC. С Connect достаточно обычного `fetch`, а `prost` не требуется — размер WASM-файла не увеличивается.
+- **Для обмена между сервисами (сервер — сервер, ресурсоёмкие задачи, потоковая передача) применяется gRPC.** В большинстве случаев достаточно Connect; на gRPC переходят только там, где потоковая передача действительно необходима.
+- **GraphQL используется только для чтения**, когда нужно получить сразу несколько связанных данных. Для записи (операций) он не применяется.
+- **WASM по-прежнему остаётся технологией для интерфейса.** Изменилось лишь то, что вызываемый им API теперь построен на Connect.
+- Интерфейсы, форма которых задана внешним стандартом (ACME, обратные вызовы OAuth, вебхуки сторонних сервисов, проверки работоспособности, статические файлы, OTLP), остаются обычным HTTP.
+- **Если есть сомнения — выбирайте Connect.**
+
+## aruaru-llm の Connect 移行への追従(2026-11-05)
+OCR の HTTP は RPoem の `open-runo-pdf-ocr` が持つ。Connect 化した版(RPoem ブランチ `aruaru-llm-connect-client`、`5a9c2fd`)へ `Cargo.toml` の rev を更新(`Ocr`・`OcrFill`・`OcrPropose`・`OcrGlyphRank`・`OcrScan`・`OcrPrepare`・`OcrLanguages`・`OcrCharset`。フォント配信 `/v1/ocr/fonts/:name` は例外)。`cargo check -p pdf-r2l-core` 成功。RPoem の main へのマージは未了(その後 rev を main のものへ)。aruaru-llm の main マージ・VPS 反映より前に配ると旧サーバーに届かない。
+
+## 2026-11-17 再開用メモ / Resume memo
+最新 v1.3.1。再開用メッセージ・未了・注意は [`PORTING.md`](PORTING.md) 末尾「2026-11-17 別アカウントでの再開用メモ」(日英)。*Latest v1.3.1; resume message, open items and cautions are at the end of PORTING.md (JA/EN).*
+
+## 【告知】2026-11-18 OCRフォント配信の変更 / Notice: OCR font delivery changed
+**日本語**: aruaru-llm の本番サーバーは、REST 全廃方針により `GET /v1/ocr/fonts/:name` を廃止し、`POST /aruaru_llm.v1.Llm/OcrFont`(Connect、JSON `{name}` → `{name, content_type, sha256, data_base64}`)へ移しました(2026-11-18、本番で新200・旧404を確認)。**古い版の PDF 変換クライアント(v1.3.1 以前。`open-runo-pdf-ocr` の rev が `3b644db` のもの)は、書体文字化(OCR)用のフォントを取得できなくなります**。画面の文字化けや OCR の失敗として現れます。OCR を使わない変換(綴じ方向の変更・画像の高解像度化)には影響しません。対処: 新しい版(`open-runo-pdf-ocr` が RPoem `345149a` 以降、フォント取得は sha256 を照合)へ更新してください。**未了**: 当リポジトリの `Cargo.toml` の rev 更新と新版リリースはまだです(更新するまで、手元でビルドした最新版でもフォント取得は失敗します)。上の 2026-11-05 の節にある「フォント配信は例外」という記述は、この変更で古くなりました。
+**English**: Following the REST-abolition policy, the production aruaru-llm server removed `GET /v1/ocr/fonts/:name` and replaced it with `POST /aruaru_llm.v1.Llm/OcrFont` (Connect, JSON `{name}` -> `{name, content_type, sha256, data_base64}`) on 2026-11-18 (verified in production: new 200, old 404). **Old PDF-converter clients (v1.3.1 and earlier; those whose `open-runo-pdf-ocr` rev is `3b644db`) can no longer fetch the fonts used for typeface OCR**; this shows up as garbled output or OCR failure. Conversions that do not use OCR (binding direction, image upscaling) are unaffected. Fix: update to a version whose `open-runo-pdf-ocr` is RPoem `345149a` or later (it verifies the font's sha256). **Open**: this repository's `Cargo.toml` rev has not been bumped and no new release exists yet (until then, even a fresh local build fails to fetch fonts). The earlier note in the 2026-11-05 section that font delivery is an exception is now obsolete.
+
+**2026-11-18 追記 / Update**: `Cargo.toml` の `open-runo-pdf-ocr`・`open-runo-sr` の rev を RPoem `64356b4`(フォント修正 `345149a` を含む main)へ更新、`cargo check -p pdf-r2l-core` 成功。新版リリースと実フォント取得の通し確認は未了。 / Bumped the `open-runo-pdf-ocr` and `open-runo-sr` revs to RPoem `64356b4` (main, includes the font fix `345149a`); `cargo check -p pdf-r2l-core` passes. A new release and an end-to-end font fetch are still open.
+
+**2026-11-18 追記 / Update**: 実フォント取得で、`OcrFont` の応答(約13MB)が ureq 3 の既定上限10MBを超えて失敗することを発見し、RPoem `bb3af78` で上限を引き上げ、rev を更新。本番の aruaru-llm から `NotoSansJP-VF.ttf`(9.59MB、sha256照合つき)の取得に成功。v1.3.2 としてリリース。 / A real font fetch revealed that the ~13 MB `OcrFont` response exceeded ureq 3 default 10 MB limit; fixed in RPoem `bb3af78` and the rev bumped. `NotoSansJP-VF.ttf` (9.59 MB, sha256-verified) was fetched from production aruaru-llm. Released as v1.3.2.
+
+
+## 2026-11-18 別アカウントでの再開用メモ / Resume memo
+**日本語**: aruaru-llm呼び出しはConnect化済み(RPoem `open-runo-pdf-ocr`、フォント取得は`OcrFont`、応答上限256MB=RPoem `bb3af78`)。v1.3.2公開済み(exe・setup・deb・tar.gz・apk、macOSなし)。古いクライアント(v1.3.1以前)は新サーバーからフォントを取得できない。未了=他OS成果物の確認。**スマホ試験は中止中**。
+**English**: aruaru-llm calls are on Connect (RPoem `open-runo-pdf-ocr`; fonts via `OcrFont`, 256 MB response limit in RPoem `bb3af78`). v1.3.2 is released (exe, setup, deb, tar.gz, apk; no macOS). Clients v1.3.1 and older cannot fetch fonts from the new server. Open: other-OS artifact checks. **Phone testing is stopped.**
+
+## 2026-11-20 低VRAM・VRAM無し端末でのAI/LLMのノウハウ / Low-VRAM AI know-how
+日本語: AI・LLMを使う機能(OCR・補完等)は [aruaru-llm/docs/LOW-VRAM-KNOWHOW.md](https://github.com/aon-co-jp/aruaru-llm/blob/main/docs/LOW-VRAM-KNOWHOW.md) に従う: 短い文脈・上限・タイムアウト、メモリが足りなければ小さいモデルへ自動で下げる。広い桁(FP64以上)は試験の正解にだけ使う。
+English: AI/LLM features (OCR, completion, etc.) follow the file above: short context, caps and timeouts, auto-downgrade when memory is short. Wide floats (FP64+) are for test oracles only.
