@@ -193,3 +193,7 @@ OCR の HTTP は RPoem の `open-runo-pdf-ocr` が持つ。Connect 化した版(
 ## 2026-11-18 別アカウントでの再開用メモ / Resume memo
 **日本語**: aruaru-llm呼び出しはConnect化済み(RPoem `open-runo-pdf-ocr`、フォント取得は`OcrFont`、応答上限256MB=RPoem `bb3af78`)。v1.3.2公開済み(exe・setup・deb・tar.gz・apk、macOSなし)。古いクライアント(v1.3.1以前)は新サーバーからフォントを取得できない。未了=他OS成果物の確認。**スマホ試験は中止中**。
 **English**: aruaru-llm calls are on Connect (RPoem `open-runo-pdf-ocr`; fonts via `OcrFont`, 256 MB response limit in RPoem `bb3af78`). v1.3.2 is released (exe, setup, deb, tar.gz, apk; no macOS). Clients v1.3.1 and older cannot fetch fonts from the new server. Open: other-OS artifact checks. **Phone testing is stopped.**
+
+## 2026-11-20 低VRAM・VRAM無し端末でのAI/LLMのノウハウ / Low-VRAM AI know-how
+日本語: AI・LLMを使う機能(OCR・補完等)は [aruaru-llm/docs/LOW-VRAM-KNOWHOW.md](https://github.com/aon-co-jp/aruaru-llm/blob/main/docs/LOW-VRAM-KNOWHOW.md) に従う: 短い文脈・上限・タイムアウト、メモリが足りなければ小さいモデルへ自動で下げる。広い桁(FP64以上)は試験の正解にだけ使う。
+English: AI/LLM features (OCR, completion, etc.) follow the file above: short context, caps and timeouts, auto-downgrade when memory is short. Wide floats (FP64+) are for test oracles only.
